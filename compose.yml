@@ -1,7 +1,8 @@
 name: eatron-assignment
 services:
   db:
-    image: timescale/timescaledb:2.18.0-pg17
+    image: timescaledb
+    build: ./db
     container_name: telemetry-db
     networks:
       - psql

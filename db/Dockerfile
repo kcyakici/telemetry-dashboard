@@ -1,2 +1,2 @@
-FROM postgres:17.6-alpine3.22
+FROM timescale/timescaledb:2.18.0-pg17
 COPY ./seed.sql /docker-entrypoint-initdb.d/

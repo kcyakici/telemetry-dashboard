@@ -19,9 +19,9 @@ func main() {
 	router := gin.Default()
 
 	router.POST("/ingest", func(c *gin.Context) { handlers.Ingest(c, conn) })
-	// router.GET("/kpis", func(c *gin.Context) { handlers.GetKPIs(c, conn) })
-	// router.GET("/trend", func(c *gin.Context) { handlers.GetTrend(c, conn) })
-	// router.GET("/distribution", func(c *gin.Context) { handlers.GetDistribution(c, conn) })
+	router.GET("/kpis", func(c *gin.Context) { handlers.GetKPIs(c, conn) })
+	router.GET("/trend", func(c *gin.Context) { handlers.GetTrend(c, conn) })
+	router.GET("/distribution", func(c *gin.Context) { handlers.GetDistribution(c, conn) })
 
 	log.Println("Server running at :8080")
 	if err := router.Run(":8080"); err != nil {

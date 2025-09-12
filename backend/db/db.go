@@ -13,7 +13,7 @@ func Connect() (*pgxpool.Pool, error) {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		// fallback for local dev
-		dbURL = "postgres://user:password@localhost:5432/telemetry?sslmode=disable"
+		dbURL = "postgres://user:passw0rd@localhost:5432/telemetry?sslmode=disable"
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
