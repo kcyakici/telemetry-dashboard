@@ -1,0 +1,25 @@
+name: eatron-assignment
+services:
+  db:
+    image: timescale/timescaledb:2.18.0-pg17
+    container_name: telemetry-db
+    networks:
+      - psql
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/psql_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/psql_password
+      POSTGRES_DB: telemetry
+    ports:
+      - "5432:5432"
+    secrets:
+      - psql_user
+      - psql_password
+
+networks:
+  psql:
+
+secrets:
+  psql_user:
+    file: ./psql_user
+  psql_password:
+    file: ./psql_password
