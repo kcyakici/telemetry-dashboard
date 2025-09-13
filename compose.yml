@@ -12,12 +12,43 @@ services:
       POSTGRES_DB: telemetry
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d telemetry"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+      start_interval: 20s
     secrets:
       - psql_user
       - psql_password
+  next-frontend:
+    image: dashboard-frontend
+    build: ./frontend
+    networks:
+      - frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - go-backend
+  go-backend:
+    image: dashboard-backend
+    build: ./backend
+    networks:
+      - frontend
+      - psql
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+    environment:
+      DATABASE_URL: postgres://user:passw0rd@db:5432/telemetry?sslmode=disable
 
 networks:
   psql:
+  frontend:
 
 secrets:
   psql_user:
