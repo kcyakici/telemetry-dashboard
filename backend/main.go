@@ -6,6 +6,7 @@ import (
 	"telemetry-dashboard/db"
 	"telemetry-dashboard/handlers"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,6 +18,14 @@ func main() {
 	defer conn.Close()
 
 	router := gin.Default()
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, //TODO change with frontend URL
+		AllowMethods:     []string{"POST", "GET", "OPTIONS"},
+		AllowHeaders:     []string{"Host", "User-Agent", "Authorization", "Origin", "Accept", "Accept-Encoding", "Content-Length", "Content-Type", "Content type", "Connection"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
+	log.Println("CORS set") //TODO remove
 
 	router.POST("/ingest", func(c *gin.Context) { handlers.Ingest(c, conn) })
 	router.POST("/ingest_csv", func(c *gin.Context) { handlers.IngestCSV(c, conn) })

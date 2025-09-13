@@ -24,8 +24,19 @@ var allowedMetrics = map[string]string{
 func GetKPIs(c *gin.Context, pool *pgxpool.Pool) {
 	// optional filters
 	vehicle := c.Query("vehicle_id") // may be empty
-	start := c.Query("start")
-	end := c.Query("end")
+	startRaw := c.Query("start")
+	endRaw := c.Query("end")
+
+	start, err := ParseAndNormalizeTime(startRaw)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	end, err := ParseAndNormalizeTime(endRaw)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	// we map KPIs to specific columns
 	avgCol := "odometry_vehicle_speed"
@@ -124,25 +135,18 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 		bins = 10
 	}
 
-	// Parse optional time filters
-	fromStr := c.Query("from")
-	toStr := c.Query("to")
-	var fromTime, toTime *time.Time
-	if fromStr != "" {
-		if t, err := time.Parse(time.RFC3339, fromStr); err == nil {
-			fromTime = &t
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid from timestamp"})
-			return
-		}
+	fromRaw := c.Query("from")
+	toRaw := c.Query("to")
+
+	fromTime, err := ParseAndNormalizeTime(fromRaw)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
-	if toStr != "" {
-		if t, err := time.Parse(time.RFC3339, toStr); err == nil {
-			toTime = &t
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid to timestamp"})
-			return
-		}
+	toTime, err := ParseAndNormalizeTime(toRaw)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	// Dynamic WHERE conditions

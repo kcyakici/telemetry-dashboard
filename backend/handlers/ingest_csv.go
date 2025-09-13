@@ -17,8 +17,12 @@ import (
 
 func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 	ct := c.ContentType()
+	// log.Printf("Content type: " + ct)
+	// for k, v := range c.Request.Header {
+	// 	log.Printf("%s: %v", k, v)
+	// } //TODO delete
 	if ct != "multipart/form-data" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid content type, must be multipart/form-data"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid content type, must be multipart/form-data, instead got " + ct})
 		return
 	}
 
