@@ -7,12 +7,12 @@ type KpiData = {
   avg_speed: number;
   max_temp: number;
   total_power: number;
-  avg_passengers: number;
+  avg_brake_pressure: number;
   door_open_ratio: number;
 };
 
 export default function KpisPage() {
-  const [vehicle, setVehicle] = useState("bus_1");
+  const [vehicle, setVehicle] = useState("B183");
   const [from, setFrom] = useState("2019-06-24T03:16:13Z");
   const [to, setTo] = useState("2019-06-24T03:20:00Z");
   const [kpis, setKpis] = useState<KpiData | null>(null);
@@ -45,9 +45,8 @@ export default function KpisPage() {
             onChange={(e) => setVehicle(e.target.value)}
             className="border rounded p-2 bg-gray-700 text-white"
           >
-            <option value="bus_1">Bus 1</option>
-            <option value="bus_2">Bus 2</option>
             <option value="B183">B183</option>
+            <option value="B208">B208</option>
           </select>
         </div>
         <div>
@@ -99,10 +98,11 @@ export default function KpisPage() {
               {kpis.total_power?.toFixed(1)} W
             </p>
           </div>
+          {/* Avg Brake Pressure */}
           <div className="bg-gray-800 p-4 rounded-xl shadow">
-            <h2 className="text-lg">Avg Passengers</h2>
+            <h2 className="text-lg">Avg Brake Pressure</h2>
             <p className="text-2xl font-bold">
-              {kpis.avg_passengers?.toFixed(1)}
+              {kpis.avg_brake_pressure?.toFixed(1)} Pa
             </p>
           </div>
 

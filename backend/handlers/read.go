@@ -22,49 +22,38 @@ var allowedMetrics = map[string]string{
 
 func GetKPIs(c *gin.Context, pool *pgxpool.Pool) {
 	vehicle := c.Query("vehicle_id")
-	startRaw := c.Query("start")
-	endRaw := c.Query("end")
-
-	start, err := ParseAndNormalizeTime(startRaw)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	end, err := ParseAndNormalizeTime(endRaw)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	start := c.Query("start")
+	end := c.Query("end")
 
 	query := `
         SELECT
-            AVG(odometry_vehicle_speed),         -- avg_speed
-            MAX(temperature_ambient),            -- max_temp
-            SUM(electric_power_demand),          -- total_power
-            AVG(itcs_number_of_passengers),      -- avg_passengers
-            AVG(status_door_is_open)::float8     -- door_open_ratio
+            AVG(odometry_vehicle_speed),     -- avg_speed
+            MAX(temperature_ambient),        -- max_temp
+            SUM(electric_power_demand),      -- total_power
+            AVG(traction_brake_pressure),    -- avg_brake_pressure
+            AVG(status_door_is_open)::float8 -- door_open_ratio
         FROM telemetry
         WHERE ($1 = '' OR vehicle_id = $1)
-          AND ($2 IS NULL OR time_iso >= $2)
-          AND ($3 IS NULL OR time_iso <= $3)
+          AND ($2 = '' OR time_iso >= $2::timestamptz)
+          AND ($3 = '' OR time_iso <= $3::timestamptz)
     `
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var avgSpeed, maxTemp, totalPower, avgPassengers, doorOpenRatio *float64
+	var avgSpeed, maxTemp, totalPower, avgBrakePressure, doorOpenRatio *float64
 	if err := pool.QueryRow(ctx, query, vehicle, start, end).
-		Scan(&avgSpeed, &maxTemp, &totalPower, &avgPassengers, &doorOpenRatio); err != nil {
+		Scan(&avgSpeed, &maxTemp, &totalPower, &avgBrakePressure, &doorOpenRatio); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed: " + err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"avg_speed":       avgSpeed,
-		"max_temp":        maxTemp,
-		"total_power":     totalPower,
-		"avg_passengers":  avgPassengers,
-		"door_open_ratio": doorOpenRatio,
+		"avg_speed":          avgSpeed,
+		"max_temp":           maxTemp,
+		"total_power":        totalPower,
+		"avg_brake_pressure": avgBrakePressure,
+		"door_open_ratio":    doorOpenRatio,
 	})
 }
 
@@ -136,18 +125,25 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 		bins = 10
 	}
 
-	fromRaw := c.Query("from")
-	toRaw := c.Query("to")
-
-	fromTime, err := ParseAndNormalizeTime(fromRaw)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	// Parse optional time filters
+	fromStr := c.Query("from")
+	toStr := c.Query("to")
+	var fromTime, toTime *time.Time
+	if fromStr != "" {
+		if t, err := time.Parse(time.RFC3339, fromStr); err == nil {
+			fromTime = &t
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid from timestamp"})
+			return
+		}
 	}
-	toTime, err := ParseAndNormalizeTime(toRaw)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if toStr != "" {
+		if t, err := time.Parse(time.RFC3339, toStr); err == nil {
+			toTime = &t
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid to timestamp"})
+			return
+		}
 	}
 
 	// Dynamic WHERE conditions
@@ -242,4 +238,43 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 		"to":      toTime,
 		"buckets": out,
 	})
+}
+
+func filterParams(c *gin.Context) (*QueryFilters, bool) {
+	vehicle := c.Query("vehicle_id")
+	startStr := c.Query("start")
+	endStr := c.Query("end")
+
+	// enforce both or none
+	if (startStr == "" && endStr != "") || (startStr != "" && endStr == "") {
+		return nil, false
+	}
+
+	var start, end *time.Time
+	if startStr != "" {
+		t, err := time.Parse(time.RFC3339, startStr)
+		if err != nil {
+			return nil, false
+		}
+		start = &t
+	}
+	if endStr != "" {
+		t, err := time.Parse(time.RFC3339, endStr)
+		if err != nil {
+			return nil, false
+		}
+		end = &t
+	}
+
+	return &QueryFilters{
+		VehicleID: vehicle,
+		Start:     start,
+		End:       end,
+	}, true
+}
+
+type QueryFilters struct {
+	VehicleID string
+	Start     *time.Time
+	End       *time.Time
 }
