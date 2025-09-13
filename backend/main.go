@@ -19,6 +19,7 @@ func main() {
 	router := gin.Default()
 
 	router.POST("/ingest", func(c *gin.Context) { handlers.Ingest(c, conn) })
+	router.POST("/ingest_csv", func(c *gin.Context) { handlers.IngestCSV(c, conn) })
 	router.GET("/kpis", func(c *gin.Context) { handlers.GetKPIs(c, conn) })
 	router.GET("/trend", func(c *gin.Context) { handlers.GetTrend(c, conn) })
 	router.GET("/distribution", func(c *gin.Context) { handlers.GetDistribution(c, conn) })

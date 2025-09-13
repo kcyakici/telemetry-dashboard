@@ -28,17 +28,6 @@ func Ingest(c *gin.Context, pool *pgxpool.Pool) {
 	}
 	defer tx.Rollback(ctx) // safe no-op if already committed
 
-	cols := []string{
-		"vehicle_id", "time_iso", "time_unix", "electric_power_demand",
-		"gnss_altitude", "gnss_course", "gnss_latitude", "gnss_longitude",
-		"itcs_bus_route", "itcs_number_of_passengers", "itcs_stop_name",
-		"odometry_articulation_angle", "odometry_steering_angle", "odometry_vehicle_speed",
-		"odometry_wheel_speed_fl", "odometry_wheel_speed_fr", "odometry_wheel_speed_ml",
-		"odometry_wheel_speed_mr", "odometry_wheel_speed_rl", "odometry_wheel_speed_rr",
-		"status_door_is_open", "status_grid_is_available", "status_halt_brake_is_active", "status_park_brake_is_active",
-		"temperature_ambient", "traction_brake_pressure", "traction_traction_force",
-	}
-
 	// build rows for CopyFrom
 	rows := make([][]interface{}, 0, len(data))
 	for _, t := range data {
@@ -89,7 +78,7 @@ func Ingest(c *gin.Context, pool *pgxpool.Pool) {
 	}
 
 	// do CopyFrom
-	_, err = tx.CopyFrom(ctx, pgx.Identifier{"telemetry"}, cols, pgx.CopyFromRows(rows))
+	_, err = tx.CopyFrom(ctx, pgx.Identifier{"telemetry"}, expectedColumnsInCsv, pgx.CopyFromRows(rows))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "copy from failed: " + err.Error()})
 		return
