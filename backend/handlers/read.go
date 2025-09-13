@@ -20,10 +20,8 @@ var allowedMetrics = map[string]string{
 	// add others you want to expose
 }
 
-// KPIs: avg speed, max temperature, total power (using dataset columns)
 func GetKPIs(c *gin.Context, pool *pgxpool.Pool) {
-	// optional filters
-	vehicle := c.Query("vehicle_id") // may be empty
+	vehicle := c.Query("vehicle_id")
 	startRaw := c.Query("start")
 	endRaw := c.Query("end")
 
@@ -38,32 +36,35 @@ func GetKPIs(c *gin.Context, pool *pgxpool.Pool) {
 		return
 	}
 
-	// we map KPIs to specific columns
-	avgCol := "odometry_vehicle_speed"
-	maxCol := "temperature_ambient"
-	sumCol := "electric_power_demand"
-
-	query := fmt.Sprintf(`
-        SELECT AVG(%s), MAX(%s), SUM(%s)
+	query := `
+        SELECT
+            AVG(odometry_vehicle_speed),         -- avg_speed
+            MAX(temperature_ambient),            -- max_temp
+            SUM(electric_power_demand),          -- total_power
+            AVG(itcs_number_of_passengers),      -- avg_passengers
+            AVG(status_door_is_open)::float8     -- door_open_ratio
         FROM telemetry
         WHERE ($1 = '' OR vehicle_id = $1)
-          AND ($2 = '' OR time_iso >= $2::timestamptz)
-          AND ($3 = '' OR time_iso <= $3::timestamptz)
-    `, avgCol, maxCol, sumCol)
+          AND ($2 IS NULL OR time_iso >= $2)
+          AND ($3 IS NULL OR time_iso <= $3)
+    `
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var avg, mx, sum *float64
-	if err := pool.QueryRow(ctx, query, vehicle, start, end).Scan(&avg, &mx, &sum); err != nil {
+	var avgSpeed, maxTemp, totalPower, avgPassengers, doorOpenRatio *float64
+	if err := pool.QueryRow(ctx, query, vehicle, start, end).
+		Scan(&avgSpeed, &maxTemp, &totalPower, &avgPassengers, &doorOpenRatio); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed: " + err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"avg_speed":   avg,
-		"max_temp":    mx,
-		"total_power": sum,
+		"avg_speed":       avgSpeed,
+		"max_temp":        maxTemp,
+		"total_power":     totalPower,
+		"avg_passengers":  avgPassengers,
+		"door_open_ratio": doorOpenRatio,
 	})
 }
 
