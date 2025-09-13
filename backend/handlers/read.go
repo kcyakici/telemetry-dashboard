@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -116,17 +118,60 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 	}
 
 	vehicle := c.Query("vehicle_id")
-	// compute min/max for the column under the filters
+	binsStr := c.DefaultQuery("bins", "10")
+	bins, err := strconv.Atoi(binsStr)
+	if err != nil || bins <= 0 {
+		bins = 10
+	}
+
+	// Parse optional time filters
+	fromStr := c.Query("from")
+	toStr := c.Query("to")
+	var fromTime, toTime *time.Time
+	if fromStr != "" {
+		if t, err := time.Parse(time.RFC3339, fromStr); err == nil {
+			fromTime = &t
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid from timestamp"})
+			return
+		}
+	}
+	if toStr != "" {
+		if t, err := time.Parse(time.RFC3339, toStr); err == nil {
+			toTime = &t
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid to timestamp"})
+			return
+		}
+	}
+
+	// Dynamic WHERE conditions
+	conditions := []string{"($1 = '' OR vehicle_id = $1)"}
+	args := []interface{}{vehicle}
+	argIdx := 2
+	if fromTime != nil {
+		conditions = append(conditions, fmt.Sprintf("time_iso >= $%d", argIdx))
+		args = append(args, *fromTime)
+		argIdx++
+	}
+	if toTime != nil {
+		conditions = append(conditions, fmt.Sprintf("time_iso <= $%d", argIdx))
+		args = append(args, *toTime)
+		argIdx++
+	}
+	whereClause := strings.Join(conditions, " AND ")
+
+	// Compute min/max
 	minMaxQuery := fmt.Sprintf(`
         SELECT MIN(%s), MAX(%s) FROM telemetry
-        WHERE ($1 = '' OR vehicle_id = $1)
-    `, col, col)
+        WHERE %s
+    `, col, col, whereClause)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var min, max *float64
-	if err := pool.QueryRow(ctx, minMaxQuery, vehicle).Scan(&min, &max); err != nil {
+	if err := pool.QueryRow(ctx, minMaxQuery, args...).Scan(&min, &max); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "min/max query failed: " + err.Error()})
 		return
 	}
@@ -135,25 +180,25 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 		return
 	}
 
-	// create bucketed counts (10 buckets)
+	// Bucket query
 	q := fmt.Sprintf(`
     WITH bounds AS (
         SELECT MIN(%[1]s) AS minval, MAX(%[1]s) AS maxval
         FROM telemetry
-        WHERE ($1 = '' OR vehicle_id = $1)
+        WHERE %[2]s
     )
-    SELECT bucket, COUNT(*) AS cnt
+    SELECT bucket, COUNT(*) AS cnt, bounds.minval, bounds.maxval
     FROM (
-        SELECT width_bucket(%[1]s, bounds.minval, bounds.maxval, 10) AS bucket
+        SELECT width_bucket(%[1]s, bounds.minval, bounds.maxval, %[3]d) AS bucket
         FROM telemetry, bounds
-        WHERE ($1 = '' OR vehicle_id = $1)
+        WHERE %[2]s
           AND %[1]s IS NOT NULL
-    ) sub
-    GROUP BY bucket
+    ) sub, bounds
+    GROUP BY bucket, bounds.minval, bounds.maxval
     ORDER BY bucket
-`, col)
+`, col, whereClause, bins)
 
-	rows, err := pool.Query(ctx, q, vehicle)
+	rows, err := pool.Query(ctx, q, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "bucket query failed: " + err.Error()})
 		return
@@ -161,19 +206,35 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 	defer rows.Close()
 
 	type Bucket struct {
-		Bucket int `json:"bucket"`
-		Count  int `json:"count"`
+		Bucket   int     `json:"bucket"`
+		Count    int     `json:"count"`
+		RangeMin float64 `json:"range_min"`
+		RangeMax float64 `json:"range_max"`
 	}
 	var out []Bucket
+	bucketWidth := (*max - *min) / float64(bins)
+
 	for rows.Next() {
 		var b Bucket
-		if err := rows.Scan(&b.Bucket, &b.Count); err != nil {
+		var minVal, maxVal float64
+		if err := rows.Scan(&b.Bucket, &b.Count, &minVal, &maxVal); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "scan failed: " + err.Error()})
 			return
 		}
+
+		b.RangeMin = minVal + float64(b.Bucket-1)*bucketWidth
+		b.RangeMax = minVal + float64(b.Bucket)*bucketWidth
 		out = append(out, b)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"buckets": out})
-
+	c.JSON(http.StatusOK, gin.H{
+		"metric":  metric,
+		"vehicle": vehicle,
+		"bins":    bins,
+		"min":     *min,
+		"max":     *max,
+		"from":    fromTime,
+		"to":      toTime,
+		"buckets": out,
+	})
 }
