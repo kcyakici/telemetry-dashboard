@@ -1,104 +1,45 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import TrendChart from "../components/TrendChart";
-import { TrendPoint } from "../types";
-
-export default function Home() {
-  const [data, setData] = useState<TrendPoint[]>([]);
-  const [vehicle, setVehicle] = useState("B183");
-  const [metric, setMetric] = useState("temp");
-  const [from, setFrom] = useState("2019-06-24T03:16:13Z");
-  const [to, setTo] = useState("2019-06-24T03:20:00Z");
-
-  const loadTrend = async () => {
-    const url = new URL("http://localhost:8080/trend");
-    url.searchParams.append("vehicle_id", vehicle);
-    url.searchParams.append("metric", metric);
-    url.searchParams.append("start", from);
-    url.searchParams.append("end", to);
-    console.log("Here");
-
-    const res = await fetch(url.toString());
-    console.log("There");
-    const json: TrendPoint[] = await res.json();
-    console.log(json);
-    setData(json);
-  };
-
-  useEffect(() => {
-    loadTrend();
-  }, []); // load initial data once
-
+export default function HomePage() {
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Telemetry Trend Dashboard</h1>
+    <div className="max-w-4xl mx-auto text-center space-y-8">
+      <h1 className="text-4xl font-bold">Welcome to Telemetry Dashboard</h1>
+      <p className="text-gray-300 text-lg">
+        This project provides a simple way to ingest, store, and visualize
+        vehicle telemetry data using TimescaleDB, Go, Nextjs and Recharts.
+      </p>
 
-      {/* Filter Controls */}
-      <div className="flex flex-wrap gap-4 bg-gray-800 p-4 rounded-xl text-white">
-        <div>
-          <label className="block text-sm font-medium mb-1">Vehicle</label>
-          <select
-            value={vehicle}
-            onChange={(e) => setVehicle(e.target.value)}
-            className="border rounded p-2 bg-gray-700 text-white"
-          >
-            <option value="B183">B183</option>
-            <option value="B208">B208</option>
-          </select>
+      <div className="grid md:grid-cols-3 gap-6 mt-8">
+        <div className="bg-gray-800 p-6 rounded-xl shadow">
+          <h2 className="text-xl font-semibold">📈 Trends</h2>
+          <p className="text-gray-400 mt-2">
+            View time-series charts of telemetry metrics like speed, temperature
+            and power demand.
+          </p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Metric</label>
-          <select
-            value={metric}
-            onChange={(e) => setMetric(e.target.value)}
-            className="border rounded p-2 bg-gray-700 text-white"
-          >
-            <option value="temp">Temperature</option>
-            <option value="speed">Speed</option>
-            <option value="power">Power Demand</option>
-          </select>
+        <div className="bg-gray-800 p-6 rounded-xl shadow">
+          <h2 className="text-xl font-semibold">📊 Distribution</h2>
+          <p className="text-gray-400 mt-2">
+            Explore value distributions for telemetry metrics with histograms
+            and ranges.
+          </p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">From</label>
-          <input
-            type="datetime-local"
-            value={from.slice(0, 16)}
-            onChange={(e) => setFrom(e.target.value)}
-            className="border rounded p-2 bg-gray-700 text-white"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">To</label>
-          <input
-            type="datetime-local"
-            value={to.slice(0, 16)}
-            onChange={(e) => setTo(e.target.value)}
-            className="border rounded p-2 bg-gray-700 text-white"
-          />
-        </div>
-
-        <div className="flex items-end">
-          <button
-            onClick={loadTrend}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Apply
-          </button>
+        <div className="bg-gray-800 p-6 rounded-xl shadow">
+          <h2 className="text-xl font-semibold">🚍 KPIs</h2>
+          <p className="text-gray-400 mt-2">
+            See aggregated statistics such as average speed, passenger count,
+            and power usage.
+          </p>
         </div>
       </div>
 
-      {/* Chart */}
-      <div className="bg-white shadow p-4 rounded-xl">
-        {data?.length > 0 ? (
-          <TrendChart data={data} metric={metric} />
-        ) : (
-          <p className="text-gray-500">No data available.</p>
-        )}
-      </div>
+      <footer className="text-gray-500 mt-12 text-sm">
+        Used{" "}
+        <a href="https://www.research-collection.ethz.ch/entities/researchdata/61ac2f6e-2ca9-4229-8242-aed3b0c0d47c">
+          ZTBus
+        </a>{" "}
+        dataset
+      </footer>
     </div>
   );
 }
