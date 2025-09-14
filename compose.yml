@@ -59,3 +59,5 @@ secrets:
     file: ./psql_user
   psql_password:
     file: ./psql_password
+# docker compose exec db psql -U user -d telemetry
+# TRUNCATE telemetry RESTART IDENTITY CASCADE;

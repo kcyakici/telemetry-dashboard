@@ -1,4 +1,6 @@
-import NavbarLink from "./NavbarLinks";
+"use client";
+
+import Link from "next/link";
 
 export default function Navbar() {
   return (
@@ -7,10 +9,21 @@ export default function Navbar() {
         <div className="text-xl font-bold">Telemetry Dashboard</div>
 
         <div className="flex space-x-6">
-          <NavbarLink href="/" text="Home"></NavbarLink>
-          <NavbarLink href="/trends" text="Trends"></NavbarLink>
-          <NavbarLink href="/distributions" text="Distributions"></NavbarLink>
-          <NavbarLink href="/kpis" text="KPIs"></NavbarLink>
+          <Link href="/" className="hover:text-blue-400 transition">
+            Home
+          </Link>
+          <Link href="/ingestion" className="hover:text-blue-400 transition">
+            Upload
+          </Link>
+          <Link href="/trends" className="hover:text-blue-400 transition">
+            Trends
+          </Link>
+          <Link href="/distribution" className="hover:text-blue-400 transition">
+            Distribution
+          </Link>
+          <Link href="/kpis" className="hover:text-blue-400 transition">
+            KPIs
+          </Link>
         </div>
       </div>
     </nav>
