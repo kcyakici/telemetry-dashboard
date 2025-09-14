@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
+	"telemetry-dashboard/my_structs"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -117,38 +119,65 @@ func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "inserted": len(rows), "vehicle_id": vehicleID})
 }
 
-// Helper: convert CSV strings into proper types (NULL for NaN / "-")
+// ParseCSVRecord dynamically maps a CSV row into []interface{} according to Telemetry struct.
 func parseCSVRecord(rec []string) ([]interface{}, error) {
-	out := make([]interface{}, len(expectedColumnsInCsv))
+	typ := reflect.TypeOf(my_structs.Telemetry{})
+	numFields := typ.NumField()
 
-	// 0: time_iso
-	ts, err := time.Parse(time.RFC3339, rec[0])
-	if err != nil {
-		return nil, fmt.Errorf("invalid time_iso: %s", rec[0])
-	}
-	out[0] = ts
-
-	// 1: time_unix
-	if rec[1] == "NaN" || rec[1] == "-" {
-		out[1] = nil
-	} else {
-		val, _ := strconv.ParseInt(rec[1], 10, 64)
-		out[1] = val
+	if len(rec) != numFields-1 { // -1 because VehicleID comes from filename, not CSV
+		return nil, fmt.Errorf("unexpected column count: got %d, want %d", len(rec), numFields-1)
 	}
 
-	// Generic numeric / string parsing for the rest
-	for i := 2; i < len(rec); i++ {
-		v := rec[i]
-		if v == "NaN" || v == "-" {
-			out[i] = nil
-			continue
+	out := make([]interface{}, numFields-1)
+
+	// Skip VehicleID (that comes from filename)
+	for i := 1; i < numFields; i++ {
+		field := typ.Field(i)
+		val := rec[i-1] // shift because VehicleID is skipped
+
+		switch field.Type.Kind() {
+		case reflect.Struct: // time.Time
+			ts, err := time.Parse(time.RFC3339, val)
+			if err != nil {
+				return nil, fmt.Errorf("invalid time_iso: %s", val)
+			}
+			out[i-1] = ts
+
+		case reflect.Ptr:
+			elemType := field.Type.Elem().Kind()
+			if val == "NaN" || val == "-" {
+				out[i-1] = nil
+				continue
+			}
+			switch elemType {
+			case reflect.Float64:
+				f, err := strconv.ParseFloat(val, 64)
+				if err != nil {
+					return nil, fmt.Errorf("invalid float in %s: %s", field.Name, val)
+				}
+				out[i-1] = f
+			case reflect.Int, reflect.Int64:
+				// time_unix is int64, status_* are int
+				n, err := strconv.ParseInt(val, 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("invalid int in %s: %s", field.Name, val)
+				}
+				// handle int vs int64 separately
+				if field.Type.Elem().Kind() == reflect.Int {
+					out[i-1] = int(n)
+				} else {
+					out[i-1] = n
+				}
+			case reflect.String:
+				out[i-1] = val
+			default:
+				return nil, fmt.Errorf("unsupported pointer type: %s", field.Type.String())
+			}
+
+		default:
+			return nil, fmt.Errorf("unsupported field kind: %s", field.Type.Kind())
 		}
-		// try float first
-		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			out[i] = f
-		} else {
-			out[i] = v
-		}
 	}
+
 	return out, nil
 }
