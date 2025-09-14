@@ -9,7 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { TrendPoint } from "../types";
+import { TrendPoint } from "../../types";
 
 type TrendChartProps = {
   data: TrendPoint[];
