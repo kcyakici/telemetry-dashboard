@@ -1,4 +1,4 @@
-name: eatron-assignment
+name: telemetry-dashboard
 services:
   db:
     image: timescaledb
@@ -12,6 +12,7 @@ services:
       POSTGRES_DB: telemetry
     ports:
       - "5432:5432"
+    profiles: ["backend", "all"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d telemetry"]
       interval: 5s
@@ -29,8 +30,9 @@ services:
       - frontend
     ports:
       - "3000:3000"
-    depends_on:
-      - go-backend
+    # depends_on:
+    #   - go-backend
+    profiles: ["all"]
   go-backend:
     image: dashboard-backend
     build: ./backend
@@ -39,6 +41,8 @@ services:
       - psql
     ports:
       - "8080:8080"
+    profiles: ["backend", "all"]
+    restart: on-failure
     depends_on:
       db:
         condition: service_healthy
