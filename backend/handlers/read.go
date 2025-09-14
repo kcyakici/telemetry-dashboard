@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -110,6 +109,7 @@ func GetTrend(c *gin.Context, pool *pgxpool.Pool) {
 }
 
 // Distribution: compute min/max then bucket using width_bucket
+// Distribution: compute min/max then bucket using width_bucket
 func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 	metric := c.DefaultQuery("metric", "temp")
 	col, ok := allowedMetrics[metric]
@@ -119,99 +119,75 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 	}
 
 	vehicle := c.Query("vehicle_id")
+	from := c.Query("from")
+	to := c.Query("to")
 	binsStr := c.DefaultQuery("bins", "10")
 	bins, err := strconv.Atoi(binsStr)
 	if err != nil || bins <= 0 {
 		bins = 10
 	}
 
-	// Parse optional time filters
-	fromStr := c.Query("from")
-	toStr := c.Query("to")
-	var fromTime, toTime *time.Time
-	if fromStr != "" {
-		if t, err := time.Parse(time.RFC3339, fromStr); err == nil {
-			fromTime = &t
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid from timestamp"})
-			return
-		}
-	}
-	if toStr != "" {
-		if t, err := time.Parse(time.RFC3339, toStr); err == nil {
-			toTime = &t
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid to timestamp"})
-			return
-		}
-	}
-
-	// Dynamic WHERE conditions
-	conditions := []string{"($1 = '' OR vehicle_id = $1)"}
-	args := []interface{}{vehicle}
-	argIdx := 2
-	if fromTime != nil {
-		conditions = append(conditions, fmt.Sprintf("time_iso >= $%d", argIdx))
-		args = append(args, *fromTime)
-		argIdx++
-	}
-	if toTime != nil {
-		conditions = append(conditions, fmt.Sprintf("time_iso <= $%d", argIdx))
-		args = append(args, *toTime)
-		argIdx++
-	}
-	whereClause := strings.Join(conditions, " AND ")
-
-	// Compute min/max
+	// Compute min/max with the same pattern as KPIs/Trend
 	minMaxQuery := fmt.Sprintf(`
-        SELECT MIN(%s), MAX(%s) FROM telemetry
-        WHERE %s
-    `, col, col, whereClause)
+		SELECT MIN(%s), MAX(%s)
+		FROM telemetry
+		WHERE ($1 = '' OR vehicle_id = $1)
+		  AND ($2 = '' OR time_iso >= $2::timestamptz)
+		  AND ($3 = '' OR time_iso <= $3::timestamptz)
+	`, col, col)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var min, max *float64
-	if err := pool.QueryRow(ctx, minMaxQuery, args...).Scan(&min, &max); err != nil {
+	if err := pool.QueryRow(ctx, minMaxQuery, vehicle, from, to).Scan(&min, &max); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "min/max query failed: " + err.Error()})
 		return
 	}
+
 	if min == nil || max == nil || *min == *max {
-		c.JSON(http.StatusOK, gin.H{"buckets": []interface{}{}})
+		c.JSON(http.StatusOK, DistributionResponse{
+			Metric:  metric,
+			Vehicle: vehicle,
+			Bins:    bins,
+			Min:     nil,
+			Max:     nil,
+			From:    from,
+			To:      to,
+			Buckets: []Bucket{},
+		})
 		return
 	}
 
 	// Bucket query
 	q := fmt.Sprintf(`
-    WITH bounds AS (
-        SELECT MIN(%[1]s) AS minval, MAX(%[1]s) AS maxval
-        FROM telemetry
-        WHERE %[2]s
-    )
-    SELECT bucket, COUNT(*) AS cnt, bounds.minval, bounds.maxval
-    FROM (
-        SELECT width_bucket(%[1]s, bounds.minval, bounds.maxval, %[3]d) AS bucket
-        FROM telemetry, bounds
-        WHERE %[2]s
-          AND %[1]s IS NOT NULL
-    ) sub, bounds
-    GROUP BY bucket, bounds.minval, bounds.maxval
-    ORDER BY bucket
-`, col, whereClause, bins)
+		WITH bounds AS (
+			SELECT MIN(%[1]s) AS minval, MAX(%[1]s) AS maxval
+			FROM telemetry
+			WHERE ($1 = '' OR vehicle_id = $1)
+			  AND ($2 = '' OR time_iso >= $2::timestamptz)
+			  AND ($3 = '' OR time_iso <= $3::timestamptz)
+		)
+		SELECT bucket, COUNT(*) AS cnt, bounds.minval, bounds.maxval
+		FROM (
+			SELECT width_bucket(%[1]s, bounds.minval, bounds.maxval, %[2]d) AS bucket
+			FROM telemetry, bounds
+			WHERE ($1 = '' OR vehicle_id = $1)
+			  AND ($2 = '' OR time_iso >= $2::timestamptz)
+			  AND ($3 = '' OR time_iso <= $3::timestamptz)
+			  AND %[1]s IS NOT NULL
+		) sub, bounds
+		GROUP BY bucket, bounds.minval, bounds.maxval
+		ORDER BY bucket
+	`, col, bins)
 
-	rows, err := pool.Query(ctx, q, args...)
+	rows, err := pool.Query(ctx, q, vehicle, from, to)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "bucket query failed: " + err.Error()})
 		return
 	}
 	defer rows.Close()
 
-	type Bucket struct {
-		Bucket   int     `json:"bucket"`
-		Count    int     `json:"count"`
-		RangeMin float64 `json:"range_min"`
-		RangeMax float64 `json:"range_max"`
-	}
 	var out []Bucket
 	bucketWidth := (*max - *min) / float64(bins)
 
@@ -228,15 +204,15 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 		out = append(out, b)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"metric":  metric,
-		"vehicle": vehicle,
-		"bins":    bins,
-		"min":     *min,
-		"max":     *max,
-		"from":    fromTime,
-		"to":      toTime,
-		"buckets": out,
+	c.JSON(http.StatusOK, DistributionResponse{
+		Metric:  metric,
+		Vehicle: vehicle,
+		Bins:    bins,
+		Min:     min,
+		Max:     max,
+		From:    from,
+		To:      to,
+		Buckets: out,
 	})
 }
 
@@ -277,4 +253,22 @@ type QueryFilters struct {
 	VehicleID string
 	Start     *time.Time
 	End       *time.Time
+}
+
+type DistributionResponse struct {
+	Metric  string   `json:"metric"`
+	Vehicle string   `json:"vehicle"`
+	Bins    int      `json:"bins"`
+	Min     *float64 `json:"min"`
+	Max     *float64 `json:"max"`
+	From    string   `json:"from,omitempty"`
+	To      string   `json:"to,omitempty"`
+	Buckets []Bucket `json:"buckets"`
+}
+
+type Bucket struct {
+	Bucket   int     `json:"bucket"`
+	Count    int     `json:"count"`
+	RangeMin float64 `json:"range_min"`
+	RangeMax float64 `json:"range_max"`
 }
