@@ -53,6 +53,9 @@ export default function DistributionPage() {
       count: b.count,
     })) || [];
 
+  const minBinCount = 5;
+  const maxBinCount = 20;
+
   return (
     <div className="p-6 space-y-6 text-white bg-gray-900 min-h-screen">
       <h1 className="text-2xl font-bold">Distribution</h1>
@@ -74,8 +77,8 @@ export default function DistributionPage() {
           type="number"
           name="bins"
           step="1"
-          min="5"
-          max="20"
+          min={minBinCount}
+          max={maxBinCount}
           value={bins}
           onChange={(e) => setBins(Number(e.target.value))}
           className="border rounded p-2 bg-gray-700 text-white"
