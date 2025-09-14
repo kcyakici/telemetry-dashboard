@@ -25,8 +25,9 @@ type DistributionResponse = {
 export default function DistributionPage() {
   const [vehicle, setVehicle] = useState("B183");
   const [metric, setMetric] = useState("temp");
-  const [from, setFrom] = useState("2019-06-24T03:16:13Z");
+  const [from, setFrom] = useState("2019-06-24T03:16:00Z");
   const [to, setTo] = useState("2019-06-24T03:20:00Z");
+  const [bins, setBins] = useState(10);
   const [data, setData] = useState<DistributionResponse | null>(null);
 
   const loadDistribution = async () => {
@@ -35,6 +36,7 @@ export default function DistributionPage() {
     url.searchParams.append("metric", metric);
     url.searchParams.append("from", from);
     url.searchParams.append("to", to);
+    url.searchParams.append("bins", String(bins));
 
     const res = await fetch(url.toString());
     const json = await res.json();
@@ -66,6 +68,19 @@ export default function DistributionPage() {
         setMetric={setMetric}
         onApply={loadDistribution}
       />
+      <div>
+        <label className="block text-sm mb-1">Bins</label>
+        <input
+          type="number"
+          name="bins"
+          step="1"
+          min="5"
+          max="20"
+          value={bins}
+          onChange={(e) => setBins(Number(e.target.value))}
+          className="border rounded p-2 bg-gray-700 text-white"
+        />
+      </div>
 
       {chartData.length > 0 ? (
         <DistributionChart data={chartData} metric={metric} vehicle={vehicle} />

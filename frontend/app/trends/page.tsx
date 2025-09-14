@@ -9,7 +9,7 @@ export default function TrendsPage() {
   const [data, setData] = useState<TrendPoint[]>([]);
   const [vehicle, setVehicle] = useState("B183");
   const [metric, setMetric] = useState("temp");
-  const [from, setFrom] = useState("2019-06-24T03:16:13Z");
+  const [from, setFrom] = useState("2019-06-24T03:16:00Z");
   const [to, setTo] = useState("2019-06-24T03:20:00Z");
 
   const loadTrend = async () => {

@@ -6,7 +6,7 @@ import KpiChart, { KpiProps } from "@/components/charts/KpiChart";
 
 export default function KpisPage() {
   const [vehicle, setVehicle] = useState("B183");
-  const [from, setFrom] = useState("2019-06-24T03:16:13Z");
+  const [from, setFrom] = useState("2019-06-24T03:16:00Z");
   const [to, setTo] = useState("2019-06-24T03:20:00Z");
   const [kpis, setKpis] = useState<KpiProps | null>(null);
 

@@ -15,7 +15,7 @@ var allowedMetrics = map[string]string{
 	"speed":    "odometry_vehicle_speed",
 	"temp":     "temperature_ambient",
 	"power":    "electric_power_demand",
-	"traction": "traction_traction_force",
+	"traction": "traction_traction_force", // TODO add break pressure
 	// add others you want to expose
 }
 
@@ -23,6 +23,11 @@ func GetKPIs(c *gin.Context, pool *pgxpool.Pool) {
 	vehicle := c.Query("vehicle_id")
 	start := c.Query("start")
 	end := c.Query("end")
+
+	if err := validateBaseParams(vehicle, start, end); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
 
 	query := `
         SELECT
@@ -59,15 +64,16 @@ func GetKPIs(c *gin.Context, pool *pgxpool.Pool) {
 // Trend: returns time series for a single validated metric
 func GetTrend(c *gin.Context, pool *pgxpool.Pool) {
 	metric := c.DefaultQuery("metric", "speed")
-	col, ok := allowedMetrics[metric]
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid metric"})
-		return
-	}
-
 	vehicle := c.Query("vehicle_id")
 	start := c.Query("start")
 	end := c.Query("end")
+
+	if err := validateBaseAndMetric(metric, vehicle, start, end); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	col := allowedMetrics[metric]
 
 	query := fmt.Sprintf(`
         SELECT time_iso, %s
@@ -109,23 +115,24 @@ func GetTrend(c *gin.Context, pool *pgxpool.Pool) {
 }
 
 // Distribution: compute min/max then bucket using width_bucket
-// Distribution: compute min/max then bucket using width_bucket
 func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 	metric := c.DefaultQuery("metric", "temp")
-	col, ok := allowedMetrics[metric]
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid metric"})
-		return
-	}
-
 	vehicle := c.Query("vehicle_id")
 	from := c.Query("from")
 	to := c.Query("to")
+
+	if err := validateBaseAndMetric(metric, vehicle, from, to); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
 	binsStr := c.DefaultQuery("bins", "10")
 	bins, err := strconv.Atoi(binsStr)
 	if err != nil || bins <= 0 {
 		bins = 10
 	}
+
+	col := allowedMetrics[metric]
 
 	// Compute min/max with the same pattern as KPIs/Trend
 	minMaxQuery := fmt.Sprintf(`
@@ -271,4 +278,47 @@ type Bucket struct {
 	Count    int     `json:"count"`
 	RangeMin float64 `json:"range_min"`
 	RangeMax float64 `json:"range_max"`
+}
+
+func validateBaseParams(vehicleID string, from string, to string) error {
+	if vehicleID == "" {
+		return fmt.Errorf("vehicle_id cannot be empty")
+	}
+
+	if err := validateDateRange(from, to); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateBaseAndMetric(metric string, vehicleID string, from string, to string) error {
+	if err := validateBaseParams(vehicleID, from, to); err != nil {
+		return err
+	}
+
+	if metric != "" {
+		if _, ok := allowedMetrics[metric]; !ok {
+			return fmt.Errorf("invalid metric: %s", metric)
+		}
+	}
+
+	return nil
+}
+
+func validateDateRange(from string, to string) error {
+	if from == "" || to == "" {
+		return fmt.Errorf("start and end must be provided")
+	}
+
+	start, err1 := time.Parse(time.RFC3339, from)
+	end, err2 := time.Parse(time.RFC3339, to)
+	if err1 != nil || err2 != nil {
+		return fmt.Errorf("invalid time format, must be RFC3339")
+	}
+	if start.After(end) {
+		return fmt.Errorf("end date cannot come before start date")
+	}
+
+	return nil
 }

@@ -19,6 +19,8 @@ export default function FilterBarBase({
   setTo,
   onApply,
 }: FilterBarBaseProps) {
+  const isInvalidRange = new Date(from) > new Date(to);
+
   return (
     <div className="flex flex-wrap gap-4 bg-gray-800 p-4 rounded-xl">
       <div>
@@ -36,8 +38,12 @@ export default function FilterBarBase({
         <label className="block text-sm mb-1">From</label>
         <input
           type="datetime-local"
-          value={from.slice(0, 16)}
-          onChange={(e) => setFrom(e.target.value)}
+          value={from ? new Date(from).toISOString().slice(0, 16) : ""}
+          onChange={(e) => {
+            const local = e.target.value; // "2019-06-24T03:21"
+            const utc = new Date(local).toISOString(); // "2019-06-24T00:21:00.000Z"
+            setFrom(utc);
+          }}
           className="border rounded p-2 bg-gray-700 text-white"
         />
       </div>
@@ -45,18 +51,32 @@ export default function FilterBarBase({
         <label className="block text-sm mb-1">To</label>
         <input
           type="datetime-local"
-          value={to.slice(0, 16)}
-          onChange={(e) => setTo(e.target.value)}
+          value={to ? new Date(to).toISOString().slice(0, 16) : ""}
+          onChange={(e) => {
+            const local = e.target.value; // "2019-06-24T03:21"
+            const utc = new Date(local).toISOString(); // "2019-06-24T00:21:00.000Z"
+            setTo(utc);
+          }}
           className="border rounded p-2 bg-gray-700 text-white"
         />
       </div>
       <div className="flex items-end">
         <button
           onClick={onApply}
-          className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+          disabled={isInvalidRange}
+          className={`px-4 py-2 rounded ${
+            isInvalidRange
+              ? "bg-gray-500 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
         >
           Apply
         </button>
+        {isInvalidRange && (
+          <p className="text-red-400 text-sm">
+            Start date must be before end date
+          </p>
+        )}
       </div>
     </div>
   );
