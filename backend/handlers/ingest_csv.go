@@ -19,10 +19,6 @@ import (
 
 func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 	ct := c.ContentType()
-	// log.Printf("Content type: " + ct)
-	// for k, v := range c.Request.Header {
-	// 	log.Printf("%s: %v", k, v)
-	// } //TODO delete
 	if ct != "multipart/form-data" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid content type, must be multipart/form-data, instead got " + ct})
 		return
@@ -49,7 +45,7 @@ func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 	vehicleID := parts[0]
 
 	reader := csv.NewReader(file)
-	reader.FieldsPerRecord = len(expectedColumnsInCsv)
+	reader.FieldsPerRecord = len(csvHeaderToDb)
 
 	headerRow, err := reader.Read()
 	if err != nil {
@@ -180,4 +176,33 @@ func parseCSVRecord(rec []string) ([]interface{}, error) {
 	}
 
 	return out, nil
+}
+
+var csvHeaderToDb = map[string]string{
+	"time_iso":                   "time_iso",
+	"time_unix":                  "time_unix",
+	"electric_powerDemand":       "electric_power_demand",
+	"gnss_altitude":              "gnss_altitude",
+	"gnss_course":                "gnss_course",
+	"gnss_latitude":              "gnss_latitude",
+	"gnss_longitude":             "gnss_longitude",
+	"itcs_busRoute":              "itcs_bus_route",
+	"itcs_numberOfPassengers":    "itcs_number_of_passengers",
+	"itcs_stopName":              "itcs_stop_name",
+	"odometry_articulationAngle": "odometry_articulation_angle",
+	"odometry_steeringAngle":     "odometry_steering_angle",
+	"odometry_vehicleSpeed":      "odometry_vehicle_speed",
+	"odometry_wheelSpeed_fl":     "odometry_wheel_speed_fl",
+	"odometry_wheelSpeed_fr":     "odometry_wheel_speed_fr",
+	"odometry_wheelSpeed_ml":     "odometry_wheel_speed_ml",
+	"odometry_wheelSpeed_mr":     "odometry_wheel_speed_mr",
+	"odometry_wheelSpeed_rl":     "odometry_wheel_speed_rl",
+	"odometry_wheelSpeed_rr":     "odometry_wheel_speed_rr",
+	"status_doorIsOpen":          "status_door_is_open",
+	"status_gridIsAvailable":     "status_grid_is_available",
+	"status_haltBrakeIsActive":   "status_halt_brake_is_active",
+	"status_parkBrakeIsActive":   "status_park_brake_is_active",
+	"temperature_ambient":        "temperature_ambient",
+	"traction_brakePressure":     "traction_brake_pressure",
+	"traction_tractionForce":     "traction_traction_force",
 }
