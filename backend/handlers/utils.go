@@ -5,30 +5,23 @@ import (
 	"time"
 )
 
-// ParseAndNormalizeTime parses a query parameter into UTC time
-func ParseAndNormalizeTime(raw string) (*time.Time, error) {
-	if raw == "" {
-		return nil, nil
-	}
+func parseDuration(start string, end string) (time.Duration, error) {
+	var duration time.Duration
+	if start != "" && end != "" {
+		t1, err1 := time.Parse(time.RFC3339, start)
+		t2, err2 := time.Parse(time.RFC3339, end)
+		if err1 != nil {
+			return 0, fmt.Errorf("invalid time format, must be RFC3339: %s", start)
+		}
+		if err2 != nil {
+			return 0, fmt.Errorf("invalid time format, must be RFC3339: %s", end)
+		}
+		if t1.After(t2) {
+			return 0, fmt.Errorf("end date cannot come before start date")
+		}
 
-	// Try strict RFC3339 first (with timezone, e.g. 2019-06-24T18:00:00Z)
-	if t, err := time.Parse(time.RFC3339, raw); err == nil {
-		utc := t.UTC()
-		return &utc, nil
-	}
+		duration = t2.Sub(t1)
 
-	// Try "datetime-local" format (browser usually sends yyyy-MM-ddTHH:mm, no TZ)
-	// Example: "2019-06-24T18:00"
-	if t, err := time.Parse("2006-01-02T15:04", raw); err == nil {
-		utc := t.UTC()
-		return &utc, nil
 	}
-
-	// Try with seconds but no TZ
-	if t, err := time.Parse("2006-01-02T15:04:05", raw); err == nil {
-		utc := t.UTC()
-		return &utc, nil
-	}
-
-	return nil, fmt.Errorf("invalid timestamp format: %s", raw)
+	return duration, nil
 }

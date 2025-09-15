@@ -35,3 +35,56 @@ CREATE TABLE IF NOT EXISTS telemetry (
 
 -- Convert the table into a hypertable
 SELECT create_hypertable('telemetry', 'time_iso', if_not_exists => TRUE);
+
+-- Enable compression for old chunks (compress after 7 days)
+ALTER TABLE telemetry SET (
+    timescaledb.compress,
+    timescaledb.compress_orderby = 'time_iso',
+    timescaledb.compress_segmentby = 'vehicle_id'
+);
+SELECT add_compression_policy('telemetry', INTERVAL '7 days');
+
+-- Continuous aggregates
+
+-- Speed
+CREATE MATERIALIZED VIEW IF NOT EXISTS trend_speed_1min
+WITH (timescaledb.continuous) AS
+SELECT time_bucket('1 minute', time_iso) AS bucket,
+       vehicle_id,
+       AVG(odometry_vehicle_speed) AS avg_speed
+FROM telemetry
+GROUP BY bucket, vehicle_id;
+
+-- Temp
+CREATE MATERIALIZED VIEW IF NOT EXISTS trend_temp_1min
+WITH (timescaledb.continuous) AS
+SELECT time_bucket('1 minute', time_iso) AS bucket,
+       vehicle_id,
+       AVG(temperature_ambient) AS avg_temp
+FROM telemetry
+GROUP BY bucket, vehicle_id;
+
+-- Power
+CREATE MATERIALIZED VIEW IF NOT EXISTS trend_power_1min
+WITH (timescaledb.continuous) AS
+SELECT time_bucket('1 minute', time_iso) AS bucket,
+       vehicle_id,
+       AVG(electric_power_demand) AS avg_power
+FROM telemetry
+GROUP BY bucket, vehicle_id;
+
+-- Add refresh policies (refresh every 5 minutes, look back 1 hour)
+SELECT add_continuous_aggregate_policy('trend_speed_1min',
+    start_offset => INTERVAL '1 hour',
+    end_offset   => INTERVAL '1 minute',
+    schedule_interval => INTERVAL '5 minutes');
+
+SELECT add_continuous_aggregate_policy('trend_temp_1min',
+    start_offset => INTERVAL '1 hour',
+    end_offset   => INTERVAL '1 minute',
+    schedule_interval => INTERVAL '5 minutes');
+
+SELECT add_continuous_aggregate_policy('trend_power_1min',
+    start_offset => INTERVAL '1 hour',
+    end_offset   => INTERVAL '1 minute',
+    schedule_interval => INTERVAL '5 minutes');
