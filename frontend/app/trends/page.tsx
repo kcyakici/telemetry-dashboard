@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import TrendChart from "../../components/charts/TrendChart";
 import { TrendPoint } from "@/types";
+import { useEffect, useState } from "react";
+import TrendChart from "../../components/charts/TrendChart";
 import FilterBarWithMetric from "../../components/filters/FilterBarWithMetric";
 
 export default function TrendsPage() {

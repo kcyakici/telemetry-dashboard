@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import FilterBarWithMetric from "../../components/filters/FilterBarWithMetric";
+import { useEffect, useState } from "react";
 import DistributionChart from "../../components/charts/DistributionChart";
+import FilterBarWithMetric from "../../components/filters/FilterBarWithMetric";
 
 type Bucket = {
   bucket: number;

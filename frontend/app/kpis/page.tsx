@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import FilterBar from "../../components/filters/FilterBar";
 import KpiChart, { KpiProps } from "@/components/charts/KpiChart";
+import { useEffect, useState } from "react";
+import FilterBar from "../../components/filters/FilterBar";
 
 export default function KpisPage() {
   const [vehicle, setVehicle] = useState("B183");
