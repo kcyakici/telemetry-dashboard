@@ -73,21 +73,12 @@ func GetTrend(c *gin.Context, pool *pgxpool.Pool) {
 		return
 	}
 
-	col := allowedMetrics[metric]
-
-	query := fmt.Sprintf(`
-        SELECT time_iso, %s
-        FROM telemetry
-        WHERE ($1 = '' OR vehicle_id = $1)
-          AND ($2 = '' OR time_iso >= $2::timestamptz)
-          AND ($3 = '' OR time_iso <= $3::timestamptz)
-        ORDER BY time_iso
-    `, col)
-
+	queryStr := buildTrendQuery(metric, start, end)
+	// log.Println("Constructed query for trend: " + queryStr) // TODO delete
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	rows, err := pool.Query(ctx, query, vehicle, start, end)
+	rows, err := pool.Query(ctx, queryStr, vehicle, start, end)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed: " + err.Error()})
 		return
@@ -223,6 +214,43 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 	})
 }
 
+func buildTrendQuery(metric string, start string, end string) string {
+	col := allowedMetrics[metric]
+	duration, _ := parseDuration(start, end)
+
+	var baseQuery, timeCol string
+	if duration > 1*time.Hour {
+		// aggregated
+		timeCol = "bucket"
+		switch metric {
+		case "speed":
+			baseQuery = `SELECT bucket AS time_iso, avg_speed AS value FROM trend_speed_1min`
+		case "temp":
+			baseQuery = `SELECT bucket AS time_iso, avg_temp AS value FROM trend_temp_1min`
+		case "power":
+			baseQuery = `SELECT bucket AS time_iso, avg_power AS value FROM trend_power_1min`
+		default:
+			// fallback to raw telemetry if metric not aggregated
+			timeCol = "time_iso"
+			baseQuery = fmt.Sprintf(`SELECT time_iso, %s AS value FROM telemetry`, col)
+		}
+	} else {
+		// raw telemetry
+		timeCol = "time_iso"
+		baseQuery = fmt.Sprintf(`SELECT time_iso, %s AS value FROM telemetry`, col)
+	}
+
+	query := fmt.Sprintf(`
+		%s
+		WHERE ($1 = '' OR vehicle_id = $1)
+		  AND ($2 = '' OR %s >= $2::timestamptz)
+		  AND ($3 = '' OR %s <= $3::timestamptz)
+		ORDER BY %s
+	`, baseQuery, timeCol, timeCol, timeCol)
+
+	return query
+}
+
 func filterParams(c *gin.Context) (*QueryFilters, bool) {
 	vehicle := c.Query("vehicle_id")
 	startStr := c.Query("start")
@@ -285,7 +313,7 @@ func validateBaseParams(vehicleID string, from string, to string) error {
 		return fmt.Errorf("vehicle_id cannot be empty")
 	}
 
-	if err := validateDateRange(from, to); err != nil {
+	if _, err := parseDuration(from, to); err != nil {
 		return err
 	}
 
@@ -301,23 +329,6 @@ func validateBaseAndMetric(metric string, vehicleID string, from string, to stri
 		if _, ok := allowedMetrics[metric]; !ok {
 			return fmt.Errorf("invalid metric: %s", metric)
 		}
-	}
-
-	return nil
-}
-
-func validateDateRange(from string, to string) error {
-	if from == "" || to == "" {
-		return fmt.Errorf("start and end must be provided")
-	}
-
-	start, err1 := time.Parse(time.RFC3339, from)
-	end, err2 := time.Parse(time.RFC3339, to)
-	if err1 != nil || err2 != nil {
-		return fmt.Errorf("invalid time format, must be RFC3339")
-	}
-	if start.After(end) {
-		return fmt.Errorf("end date cannot come before start date")
 	}
 
 	return nil

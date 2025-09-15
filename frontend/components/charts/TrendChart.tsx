@@ -27,7 +27,15 @@ export default function TrendChart({ data, metric }: TrendChartProps) {
       <LineChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="time" />
-        <YAxis />
+        <YAxis
+          label={{
+            value: metric,
+            angle: -90,
+            position: "insideLeft",
+            offset: 10,
+            style: { textAnchor: "middle", fill: "#fff" },
+          }}
+        />
         <Tooltip />
         <Line
           type="monotone"

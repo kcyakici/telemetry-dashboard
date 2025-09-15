@@ -1,8 +1,8 @@
 "use client";
 
+import { TrendPoint } from "@/types";
 import { useEffect, useState } from "react";
 import TrendChart from "../../components/charts/TrendChart";
-import { TrendPoint } from "@/types";
 import FilterBarWithMetric from "../../components/filters/FilterBarWithMetric";
 
 export default function TrendsPage() {
@@ -26,6 +26,7 @@ export default function TrendsPage() {
 
   useEffect(() => {
     loadTrend();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import FilterBar from "../../components/filters/FilterBar";
 import KpiChart, { KpiProps } from "@/components/charts/KpiChart";
+import { useEffect, useState } from "react";
+import FilterBar from "../../components/filters/FilterBar";
 
 export default function KpisPage() {
   const [vehicle, setVehicle] = useState("B183");
@@ -23,6 +23,7 @@ export default function KpisPage() {
 
   useEffect(() => {
     loadKpis();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
