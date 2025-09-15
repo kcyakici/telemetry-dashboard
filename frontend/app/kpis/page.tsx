@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import FilterBar from "../../components/filters/FilterBar";
 import KpiChart, { KpiProps } from "@/components/charts/KpiChart";
 
@@ -23,6 +23,7 @@ export default function KpisPage() {
 
   useEffect(() => {
     loadKpis();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

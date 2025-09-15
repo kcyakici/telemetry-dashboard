@@ -37,12 +37,13 @@ CREATE TABLE IF NOT EXISTS telemetry (
 SELECT create_hypertable('telemetry', 'time_iso', if_not_exists => TRUE);
 
 -- Enable compression for old chunks (compress after 7 days)
-ALTER TABLE telemetry SET (
-    timescaledb.compress,
-    timescaledb.compress_orderby = 'time_iso',
-    timescaledb.compress_segmentby = 'vehicle_id'
-);
-SELECT add_compression_policy('telemetry', INTERVAL '7 days');
+-- Might be problematic for static old data
+-- ALTER TABLE telemetry SET (
+--     timescaledb.compress,
+--     timescaledb.compress_orderby = 'time_iso',
+--     timescaledb.compress_segmentby = 'vehicle_id'
+-- );
+-- SELECT add_compression_policy('telemetry', INTERVAL '7 days');
 
 -- Continuous aggregates
 
@@ -75,16 +76,19 @@ GROUP BY bucket, vehicle_id;
 
 -- Add refresh policies (refresh every 5 minutes, look back 1 hour)
 SELECT add_continuous_aggregate_policy('trend_speed_1min',
-    start_offset => INTERVAL '1 hour',
+    start_offset => NULL,
+    -- start_offset => INTERVAL '1 hour',
     end_offset   => INTERVAL '1 minute',
-    schedule_interval => INTERVAL '5 minutes');
+    schedule_interval => INTERVAL '1 minute');
 
 SELECT add_continuous_aggregate_policy('trend_temp_1min',
-    start_offset => INTERVAL '1 hour',
+    start_offset => NULL,
+    -- start_offset => INTERVAL '1 hour',
     end_offset   => INTERVAL '1 minute',
-    schedule_interval => INTERVAL '5 minutes');
+    schedule_interval => INTERVAL '1 minute');
 
 SELECT add_continuous_aggregate_policy('trend_power_1min',
-    start_offset => INTERVAL '1 hour',
+    start_offset => NULL,
+    -- start_offset => INTERVAL '1 hour',
     end_offset   => INTERVAL '1 minute',
-    schedule_interval => INTERVAL '5 minutes');
+    schedule_interval => INTERVAL '1 minute');

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import FilterBarWithMetric from "../../components/filters/FilterBarWithMetric";
 import DistributionChart from "../../components/charts/DistributionChart";
 
@@ -41,10 +41,11 @@ export default function DistributionPage() {
     const res = await fetch(url.toString());
     const json = await res.json();
     setData(json);
-  };
+  }; // all dependencies;
 
   useEffect(() => {
     loadDistribution();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const chartData =

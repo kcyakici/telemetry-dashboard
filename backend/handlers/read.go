@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -74,12 +73,12 @@ func GetTrend(c *gin.Context, pool *pgxpool.Pool) {
 		return
 	}
 
-	query := buildTrendQuery(metric, start, end)
-
+	queryStr := buildTrendQuery(metric, start, end)
+	// log.Println("Constructed query for trend: " + queryStr) // TODO delete
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	rows, err := pool.Query(ctx, query, vehicle, start, end)
+	rows, err := pool.Query(ctx, queryStr, vehicle, start, end)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed: " + err.Error()})
 		return
@@ -219,9 +218,10 @@ func buildTrendQuery(metric string, start string, end string) string {
 	col := allowedMetrics[metric]
 	duration, _ := parseDuration(start, end)
 
-	var baseQuery string
+	var baseQuery, timeCol string
 	if duration > 1*time.Hour {
-		log.Println("Time interval greater than 1 hour chosen") // TODO delete
+		// aggregated
+		timeCol = "bucket"
 		switch metric {
 		case "speed":
 			baseQuery = `SELECT bucket AS time_iso, avg_speed AS value FROM trend_speed_1min`
@@ -230,17 +230,23 @@ func buildTrendQuery(metric string, start string, end string) string {
 		case "power":
 			baseQuery = `SELECT bucket AS time_iso, avg_power AS value FROM trend_power_1min`
 		default:
+			// fallback to raw telemetry if metric not aggregated
+			timeCol = "time_iso"
 			baseQuery = fmt.Sprintf(`SELECT time_iso, %s AS value FROM telemetry`, col)
 		}
+	} else {
+		// raw telemetry
+		timeCol = "time_iso"
+		baseQuery = fmt.Sprintf(`SELECT time_iso, %s AS value FROM telemetry`, col)
 	}
 
 	query := fmt.Sprintf(`
 		%s
 		WHERE ($1 = '' OR vehicle_id = $1)
-		  AND ($2 = '' OR time_iso >= $2::timestamptz)
-		  AND ($3 = '' OR time_iso <= $3::timestamptz)
-		ORDER BY time_iso
-	`, baseQuery)
+		  AND ($2 = '' OR %s >= $2::timestamptz)
+		  AND ($3 = '' OR %s <= $3::timestamptz)
+		ORDER BY %s
+	`, baseQuery, timeCol, timeCol, timeCol)
 
 	return query
 }
