@@ -30,7 +30,16 @@ export default function BarChartComponent({
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
           <XAxis dataKey="range" tick={{ fill: "white" }} />
-          <YAxis tick={{ fill: "white" }} />
+          <YAxis
+            tick={{ fill: "white" }}
+            label={{
+              value: metric,
+              angle: -90,
+              position: "insideLeft",
+              offset: 10,
+              style: { textAnchor: "middle", fill: "#fff" },
+            }}
+          />
           <Tooltip
             contentStyle={{ backgroundColor: "#1f2937", border: "none" }}
             labelStyle={{ color: "#e5e7eb" }}

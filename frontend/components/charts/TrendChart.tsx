@@ -1,13 +1,13 @@
 "use client";
 
 import {
-  LineChart,
+  CartesianGrid,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
 } from "recharts";
 import { TrendPoint } from "../../types";
 
@@ -22,18 +22,29 @@ export default function TrendChart({ data, metric }: TrendChartProps) {
     value: d.value,
   }));
 
+  const values = chartData.map((d) => d.value);
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const domain =
+    minValue === maxValue
+      ? [minValue - 1, maxValue + 1]
+      : [minValue * 0.95, maxValue * 1.05];
+
   return (
     <ResponsiveContainer width="100%" height={350}>
       <LineChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="time" />
         <YAxis
+          allowDecimals={false}
+          tickFormatter={(tick) => Math.round(tick).toString()}
+          domain={domain}
           label={{
             value: metric,
             angle: -90,
             position: "insideLeft",
             offset: 10,
-            style: { textAnchor: "middle", fill: "#fff" },
+            style: { textAnchor: "middle", fill: "#000" },
           }}
         />
         <Tooltip />

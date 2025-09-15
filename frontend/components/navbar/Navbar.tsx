@@ -18,7 +18,10 @@ export default function Navbar() {
           <Link href="/trends" className="hover:text-blue-400 transition">
             Trends
           </Link>
-          <Link href="/distribution" className="hover:text-blue-400 transition">
+          <Link
+            href="/distributions"
+            className="hover:text-blue-400 transition"
+          >
             Distribution
           </Link>
           <Link href="/kpis" className="hover:text-blue-400 transition">

@@ -38,7 +38,7 @@ export default function IngestionPage() {
       }
 
       const json = await res.json();
-      setMessage(`Upload successful: ${json.rows_ingested || "Unknown"} rows`);
+      setMessage(`Upload successful: ${json.inserted || "Unknown"} rows`);
       setIsSuccess(true);
       setFile(null);
     } catch (err: any) {
