@@ -45,13 +45,11 @@ export default function TrendsPage() {
         onApply={loadTrend}
       />
 
-      <div className="bg-white shadow p-4 rounded-xl">
-        {data?.length > 0 ? (
-          <TrendChart data={data} metric={metric} />
-        ) : (
-          <p className="text-gray-500">No data available.</p>
-        )}
-      </div>
+      {data?.length > 0 ? (
+        <TrendChart data={data} metric={metric} />
+      ) : (
+        <p className="text-gray-500">No data available.</p>
+      )}
     </div>
   );
 }

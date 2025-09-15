@@ -33,7 +33,6 @@ export default function BarChartComponent({
           <YAxis
             tick={{ fill: "white" }}
             label={{
-              value: metric,
               angle: -90,
               position: "insideLeft",
               offset: 10,
