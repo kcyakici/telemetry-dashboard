@@ -13,10 +13,10 @@ import { TrendPoint } from "../../types";
 
 type TrendChartProps = {
   data: TrendPoint[];
-  metric: string;
+  header: string;
 };
 
-export default function TrendChart({ data, metric }: TrendChartProps) {
+export default function TrendChart({ data, header }: TrendChartProps) {
   const chartData = data.map((d) => ({
     time: new Date(d.timestamp).toLocaleTimeString(),
     value: d.value,
@@ -29,7 +29,7 @@ export default function TrendChart({ data, metric }: TrendChartProps) {
 
   return (
     <div className="bg-gray-800 p-6 rounded-xl shadow">
-      <h2 className="text-lg mb-4">{metric.toUpperCase()} Trend</h2>
+      <h2 className="text-lg mb-4">{header}</h2>
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#374151" />

@@ -17,7 +17,9 @@ export default function DateInput({
         value={date ? new Date(date).toISOString().slice(0, 16) : ""}
         onChange={(e) => {
           const local = e.target.value; // "2019-06-24T03:21"
+          // const utc = new Date(local).toUTCString();
           const utc = new Date(local).toISOString(); // "2019-06-24T00:21:00.000Z"
+          console.log(utc);
           handleDateChange(utc);
         }}
         className="border rounded p-2 bg-gray-700 text-white"

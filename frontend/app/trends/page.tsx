@@ -1,32 +1,52 @@
 "use client";
 
-import { TrendPoint } from "@/types";
 import { useEffect, useState } from "react";
+import { TrendPoint } from "@/types";
 import TrendChart from "../../components/charts/TrendChart";
-import FilterBarWithMetric from "../../components/filters/FilterBarWithMetric";
+import FilterBarWithMetric, {
+  Filters,
+} from "../../components/filters/FilterBarWithMetric";
+
+const initialFilters: Filters = {
+  vehicle: "B183",
+  metric: "temp",
+  from: "2019-06-24T03:16:00Z",
+  to: "2019-06-24T03:20:00Z",
+};
 
 export default function TrendsPage() {
   const [data, setData] = useState<TrendPoint[]>([]);
-  const [vehicle, setVehicle] = useState("B183");
-  const [metric, setMetric] = useState("temp");
-  const [from, setFrom] = useState("2019-06-24T03:16:00Z");
-  const [to, setTo] = useState("2019-06-24T03:20:00Z");
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(initialFilters);
 
-  const loadTrend = async () => {
+  const loadTrend = async (filters: Filters) => {
     const url = new URL("http://localhost:8080/trend");
-    url.searchParams.append("vehicle_id", vehicle);
-    url.searchParams.append("metric", metric);
-    url.searchParams.append("start", from);
-    url.searchParams.append("end", to);
+    url.searchParams.append("vehicle_id", filters.vehicle);
+    url.searchParams.append("metric", filters.metric);
+    url.searchParams.append("start", filters.from);
+    url.searchParams.append("end", filters.to);
 
     const res = await fetch(url.toString());
     const json: TrendPoint[] = await res.json();
     setData(json);
+    setAppliedFilters(filters);
   };
 
+  // initial load with defaults
   useEffect(() => {
-    loadTrend();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const fetchData = async (filters: Filters) => {
+      const url = new URL("http://localhost:8080/trend");
+      url.searchParams.append("vehicle_id", filters.vehicle);
+      url.searchParams.append("metric", filters.metric);
+      url.searchParams.append("start", filters.from);
+      url.searchParams.append("end", filters.to);
+
+      const res = await fetch(url.toString());
+      const json: TrendPoint[] = await res.json();
+      setData(json);
+      setAppliedFilters(filters);
+    };
+
+    fetchData(initialFilters);
   }, []);
 
   return (
@@ -34,19 +54,15 @@ export default function TrendsPage() {
       <h1 className="text-2xl font-bold">Telemetry Trend Dashboard</h1>
 
       <FilterBarWithMetric
-        vehicle={vehicle}
-        setVehicle={setVehicle}
-        from={from}
-        setFrom={setFrom}
-        to={to}
-        setTo={setTo}
-        metric={metric}
-        setMetric={setMetric}
+        initialFilters={initialFilters}
         onApply={loadTrend}
       />
 
       {data?.length > 0 ? (
-        <TrendChart data={data} metric={metric} />
+        <TrendChart
+          data={data}
+          header={`${appliedFilters.vehicle} ${appliedFilters.metric} Trend - From ${appliedFilters.from} To ${appliedFilters.to}`}
+        />
       ) : (
         <p className="text-gray-500">No data available.</p>
       )}

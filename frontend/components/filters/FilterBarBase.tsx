@@ -1,26 +1,31 @@
 "use client";
 
+import { useState } from "react";
 import DateInput from "./DateInput";
 
-type FilterBarBaseProps = {
+export type FiltersBase = {
   vehicle: string;
-  setVehicle: (v: string) => void;
   from: string;
-  setFrom: (f: string) => void;
   to: string;
-  setTo: (t: string) => void;
-  onApply: () => void;
+};
+
+type FilterBarBaseProps = {
+  initialVehicle: string;
+  initialFrom: string;
+  initialTo: string;
+  onApply: (filters: { vehicle: string; from: string; to: string }) => void;
 };
 
 export default function FilterBarBase({
-  vehicle,
-  setVehicle,
-  from,
-  setFrom,
-  to,
-  setTo,
+  initialVehicle,
+  initialFrom,
+  initialTo,
   onApply,
 }: FilterBarBaseProps) {
+  const [vehicle, setVehicle] = useState(initialVehicle);
+  const [from, setFrom] = useState(initialFrom);
+  const [to, setTo] = useState(initialTo);
+
   const isInvalidRange = new Date(from) > new Date(to);
 
   return (
@@ -36,15 +41,11 @@ export default function FilterBarBase({
           <option value="B208">B208</option>
         </select>
       </div>
-      <DateInput
-        label="From"
-        date={from}
-        handleDateChange={setFrom}
-      ></DateInput>
-      <DateInput label="To" date={to} handleDateChange={setTo}></DateInput>
+      <DateInput label="From" date={from} handleDateChange={setFrom} />
+      <DateInput label="To" date={to} handleDateChange={setTo} />
       <div className="flex items-end">
         <button
-          onClick={onApply}
+          onClick={() => onApply({ vehicle, from, to })}
           disabled={isInvalidRange}
           className={`px-4 py-2 rounded ${
             isInvalidRange

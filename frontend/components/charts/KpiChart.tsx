@@ -6,29 +6,42 @@ export type KpiProps = {
   total_power: number;
   avg_brake_pressure: number;
   door_open_ratio: number;
+  header: string;
 };
 
-export default function KpiChart(props: KpiProps) {
+export default function KpiChart({
+  avg_speed,
+  max_temp,
+  total_power,
+  avg_brake_pressure,
+  door_open_ratio,
+  header,
+}: KpiProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+      {/* Header across all columns */}
+      <div className="col-span-full">
+        <h2 className="text-2xl font-bold mb-6">{header.toUpperCase()}</h2>
+      </div>
+
       <div className="bg-gray-800 p-4 rounded-xl shadow">
         <h2 className="text-lg">Avg Speed</h2>
-        <p className="text-2xl font-bold">{props.avg_speed?.toFixed(2)} km/h</p>
+        <p className="text-2xl font-bold">{avg_speed?.toFixed(2)} km/h</p>
       </div>
       <div className="bg-gray-800 p-4 rounded-xl shadow">
         <h2 className="text-lg">Max Temp</h2>
         <p className="text-2xl font-bold">
-          {(props.max_temp - 273.15).toFixed(1)} °C
+          {(max_temp - 273.15).toFixed(1)} °C
         </p>
       </div>
       <div className="bg-gray-800 p-4 rounded-xl shadow">
         <h2 className="text-lg">Total Power</h2>
-        <p className="text-2xl font-bold">{props.total_power?.toFixed(1)} W</p>
+        <p className="text-2xl font-bold">{total_power?.toFixed(1)} W</p>
       </div>
       <div className="bg-gray-800 p-4 rounded-xl shadow">
         <h2 className="text-lg">Avg Brake Pressure</h2>
         <p className="text-2xl font-bold">
-          {props.avg_brake_pressure?.toFixed(1)} Pa
+          {avg_brake_pressure?.toFixed(1)} Pa
         </p>
       </div>
 
@@ -38,8 +51,8 @@ export default function KpiChart(props: KpiProps) {
           <PieChart>
             <Pie
               data={[
-                { name: "Open", value: props.door_open_ratio * 100 },
-                { name: "Closed", value: 100 - props.door_open_ratio * 100 },
+                { name: "Open", value: door_open_ratio * 100 },
+                { name: "Closed", value: 100 - door_open_ratio * 100 },
               ]}
               dataKey="value"
               cx="50%"

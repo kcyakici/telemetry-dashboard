@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from "react";
 import DistributionChart from "../../components/charts/DistributionChart";
-import FilterBarWithMetric from "../../components/filters/FilterBarWithMetric";
+import FilterBarWithMetric, {
+  Filters,
+} from "../../components/filters/FilterBarWithMetric";
+
+const initialFilters: Filters = {
+  vehicle: "B183",
+  metric: "temp",
+  from: "2019-06-24T03:16:00Z",
+  to: "2019-06-24T03:20:00Z",
+};
 
 type Bucket = {
   bucket: number;
@@ -23,29 +32,40 @@ type DistributionResponse = {
 };
 
 export default function DistributionPage() {
-  const [vehicle, setVehicle] = useState("B183");
-  const [metric, setMetric] = useState("temp");
-  const [from, setFrom] = useState("2019-06-24T03:16:00Z");
-  const [to, setTo] = useState("2019-06-24T03:20:00Z");
-  const [bins, setBins] = useState(10);
   const [data, setData] = useState<DistributionResponse | null>(null);
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(initialFilters);
+  const [bins, setBins] = useState(10);
 
-  const loadDistribution = async () => {
+  const loadDistribution = async (filters: Filters) => {
     const url = new URL("http://localhost:8080/distribution");
-    url.searchParams.append("vehicle_id", vehicle);
-    url.searchParams.append("metric", metric);
-    url.searchParams.append("from", from);
-    url.searchParams.append("to", to);
+    url.searchParams.append("vehicle_id", filters.vehicle);
+    url.searchParams.append("metric", filters.metric);
+    url.searchParams.append("from", filters.from);
+    url.searchParams.append("to", filters.to);
     url.searchParams.append("bins", String(bins));
 
     const res = await fetch(url.toString());
-    const json = await res.json();
+    const json: DistributionResponse = await res.json();
     setData(json);
-  }; // all dependencies;
+    setAppliedFilters(filters);
+  };
 
   useEffect(() => {
-    loadDistribution();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const fetchData = async (filters: Filters) => {
+      const url = new URL("http://localhost:8080/distribution");
+      url.searchParams.append("vehicle_id", filters.vehicle);
+      url.searchParams.append("metric", filters.metric);
+      url.searchParams.append("from", filters.from);
+      url.searchParams.append("to", filters.to);
+      url.searchParams.append("bins", String(10));
+
+      const res = await fetch(url.toString());
+      const json: DistributionResponse = await res.json();
+      setData(json);
+      setAppliedFilters(filters);
+    };
+
+    fetchData(initialFilters);
   }, []);
 
   const chartData =
@@ -62,16 +82,10 @@ export default function DistributionPage() {
       <h1 className="text-2xl font-bold">Distribution</h1>
 
       <FilterBarWithMetric
-        vehicle={vehicle}
-        setVehicle={setVehicle}
-        from={from}
-        setFrom={setFrom}
-        to={to}
-        setTo={setTo}
-        metric={metric}
-        setMetric={setMetric}
+        initialFilters={initialFilters}
         onApply={loadDistribution}
       />
+
       <div>
         <label className="block text-sm mb-1">Bins</label>
         <input
@@ -87,7 +101,11 @@ export default function DistributionPage() {
       </div>
 
       {chartData.length > 0 ? (
-        <DistributionChart data={chartData} metric={metric} vehicle={vehicle} />
+        <DistributionChart
+          data={chartData}
+          metric={appliedFilters.metric}
+          vehicle={appliedFilters.vehicle}
+        />
       ) : (
         <p className="text-gray-400">No distribution data available.</p>
       )}

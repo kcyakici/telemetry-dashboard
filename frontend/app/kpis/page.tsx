@@ -2,45 +2,76 @@
 
 import KpiChart, { KpiProps } from "@/components/charts/KpiChart";
 import { useEffect, useState } from "react";
-import FilterBar from "@/components/filters/FilterBar";
+import FilterBarBase, { FiltersBase } from "@/components/filters/FilterBarBase";
+
+const initialFilters = {
+  vehicle: "B183",
+  from: "2019-06-24T03:16:00Z",
+  to: "2019-06-24T03:20:00Z",
+};
 
 export default function KpisPage() {
-  const [vehicle, setVehicle] = useState("B183");
-  const [from, setFrom] = useState("2019-06-24T03:16:00Z");
-  const [to, setTo] = useState("2019-06-24T03:20:00Z");
   const [kpis, setKpis] = useState<KpiProps | null>(null);
+  const [appliedFilters, setAppliedFilters] =
+    useState<FiltersBase>(initialFilters);
 
-  const loadKpis = async () => {
+  const loadKpis = async (filters: {
+    vehicle: string;
+    from: string;
+    to: string;
+  }) => {
     const url = new URL("http://localhost:8080/kpis");
-    url.searchParams.append("vehicle_id", vehicle);
-    url.searchParams.append("start", from);
-    url.searchParams.append("end", to);
+    url.searchParams.append("vehicle_id", filters.vehicle);
+    url.searchParams.append("start", filters.from);
+    url.searchParams.append("end", filters.to);
 
     const res = await fetch(url.toString());
     const json = await res.json();
+    setAppliedFilters(filters);
     setKpis(json);
   };
 
   useEffect(() => {
-    loadKpis();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const fetchData = async (filters: {
+      vehicle: string;
+      from: string;
+      to: string;
+    }) => {
+      const url = new URL("http://localhost:8080/kpis");
+      url.searchParams.append("vehicle_id", filters.vehicle);
+      url.searchParams.append("start", filters.from);
+      url.searchParams.append("end", filters.to);
+
+      const res = await fetch(url.toString());
+      const json = await res.json();
+      setAppliedFilters(filters);
+      setKpis(json);
+    };
+
+    fetchData(initialFilters);
   }, []);
 
   return (
     <div className="p-6 space-y-6 text-white bg-gray-900 min-h-screen">
       <h1 className="text-2xl font-bold">Vehicle KPIs</h1>
 
-      <FilterBar
-        vehicle={vehicle}
-        setVehicle={setVehicle}
-        from={from}
-        setFrom={setFrom}
-        to={to}
-        setTo={setTo}
+      <FilterBarBase
+        initialVehicle={initialFilters.vehicle}
+        initialFrom={initialFilters.from}
+        initialTo={initialFilters.to}
         onApply={loadKpis}
       />
 
-      {kpis && <KpiChart {...kpis}></KpiChart>}
+      {kpis && (
+        <KpiChart
+          avg_brake_pressure={kpis.avg_brake_pressure}
+          avg_speed={kpis.avg_speed}
+          max_temp={kpis.max_temp}
+          total_power={kpis.total_power}
+          door_open_ratio={kpis.door_open_ratio}
+          header={`${appliedFilters.vehicle} from ${appliedFilters.from} to ${appliedFilters.to}`}
+        />
+      )}
     </div>
   );
 }
