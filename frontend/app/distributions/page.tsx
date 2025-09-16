@@ -102,6 +102,10 @@ export default function DistributionPage() {
 
       {chartData.length > 0 ? (
         <DistributionChart
+          header={`${appliedFilters.metric.toUpperCase()} Distribution - 
+          Vehicle:  ${appliedFilters.vehicle} - FROM ${
+            appliedFilters.from
+          } TO ${appliedFilters.to} - Bins: ${bins}`}
           data={chartData}
           metric={appliedFilters.metric}
           vehicle={appliedFilters.vehicle}

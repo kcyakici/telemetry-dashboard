@@ -10,8 +10,16 @@ const initialFilters = {
   to: "2019-06-24T03:20:00Z",
 };
 
+type KpiResponse = {
+  avg_speed: number;
+  max_temp: number;
+  total_power: number;
+  avg_brake_pressure: number;
+  door_open_ratio: number;
+};
+
 export default function KpisPage() {
-  const [kpis, setKpis] = useState<KpiProps | null>(null);
+  const [kpis, setKpis] = useState<KpiResponse | null>(null);
   const [appliedFilters, setAppliedFilters] =
     useState<FiltersBase>(initialFilters);
 
@@ -64,11 +72,7 @@ export default function KpisPage() {
 
       {kpis && (
         <KpiChart
-          avg_brake_pressure={kpis.avg_brake_pressure}
-          avg_speed={kpis.avg_speed}
-          max_temp={kpis.max_temp}
-          total_power={kpis.total_power}
-          door_open_ratio={kpis.door_open_ratio}
+          {...kpis}
           header={`${appliedFilters.vehicle} from ${appliedFilters.from} to ${appliedFilters.to}`}
         />
       )}

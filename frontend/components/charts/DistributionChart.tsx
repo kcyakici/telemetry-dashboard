@@ -14,18 +14,18 @@ type BarChartProps = {
   data: { range: string; count: number }[];
   metric: string;
   vehicle: string;
+  header: string;
 };
 
 export default function BarChartComponent({
   data,
   metric,
   vehicle,
+  header,
 }: BarChartProps) {
   return (
     <div className="bg-gray-800 p-6 rounded-xl shadow">
-      <h2 className="text-lg mb-4">
-        {metric.toUpperCase()} Distribution ({vehicle})
-      </h2>
+      <h2 className="text-lg mb-4">{header}</h2>
       <ResponsiveContainer width="100%" height={400}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
