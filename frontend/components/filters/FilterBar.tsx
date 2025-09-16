@@ -1,5 +1,7 @@
 "use client";
 
+import DateInput from "./DateInput";
+
 type FilterBarBaseProps = {
   vehicle: string;
   setVehicle: (v: string) => void;
@@ -34,32 +36,12 @@ export default function FilterBarBase({
           <option value="B208">B208</option>
         </select>
       </div>
-      <div>
-        <label className="block text-sm mb-1">From</label>
-        <input
-          type="datetime-local"
-          value={from ? new Date(from).toISOString().slice(0, 16) : ""}
-          onChange={(e) => {
-            const local = e.target.value; // "2019-06-24T03:21"
-            const utc = new Date(local).toISOString(); // "2019-06-24T00:21:00.000Z"
-            setFrom(utc);
-          }}
-          className="border rounded p-2 bg-gray-700 text-white"
-        />
-      </div>
-      <div>
-        <label className="block text-sm mb-1">To</label>
-        <input
-          type="datetime-local"
-          value={to ? new Date(to).toISOString().slice(0, 16) : ""}
-          onChange={(e) => {
-            const local = e.target.value; // "2019-06-24T03:21"
-            const utc = new Date(local).toISOString(); // "2019-06-24T00:21:00.000Z"
-            setTo(utc);
-          }}
-          className="border rounded p-2 bg-gray-700 text-white"
-        />
-      </div>
+      <DateInput
+        label="From"
+        date={from}
+        handleDateChange={setFrom}
+      ></DateInput>
+      <DateInput label="To" date={to} handleDateChange={setTo}></DateInput>
       <div className="flex items-end">
         <button
           onClick={onApply}
