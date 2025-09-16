@@ -34,7 +34,8 @@ type DistributionResponse = {
 export default function DistributionPage() {
   const [data, setData] = useState<DistributionResponse | null>(null);
   const [appliedFilters, setAppliedFilters] = useState<Filters>(initialFilters);
-  const [bins, setBins] = useState(10);
+  const [draftBin, setDraftBin] = useState(10);
+  const [appliedBin, setAppliedBin] = useState(10);
 
   const loadDistribution = async (filters: Filters) => {
     const url = new URL("http://localhost:8080/distribution");
@@ -42,12 +43,13 @@ export default function DistributionPage() {
     url.searchParams.append("metric", filters.metric);
     url.searchParams.append("from", filters.from);
     url.searchParams.append("to", filters.to);
-    url.searchParams.append("bins", String(bins));
+    url.searchParams.append("bins", String(appliedBin));
 
     const res = await fetch(url.toString());
     const json: DistributionResponse = await res.json();
-    setData(json);
     setAppliedFilters(filters);
+    setAppliedBin(draftBin);
+    setData(json);
   };
 
   useEffect(() => {
@@ -94,8 +96,8 @@ export default function DistributionPage() {
           step="1"
           min={minBinCount}
           max={maxBinCount}
-          value={bins}
-          onChange={(e) => setBins(Number(e.target.value))}
+          value={draftBin}
+          onChange={(e) => setDraftBin(Number(e.target.value))}
           className="border rounded p-2 bg-gray-700 text-white"
         />
       </div>
@@ -105,7 +107,7 @@ export default function DistributionPage() {
           header={`${appliedFilters.metric.toUpperCase()} Distribution - 
           Vehicle:  ${appliedFilters.vehicle} - FROM ${
             appliedFilters.from
-          } TO ${appliedFilters.to} - Bins: ${bins}`}
+          } TO ${appliedFilters.to} - Bins: ${appliedBin}`}
           data={chartData}
           metric={appliedFilters.metric}
           vehicle={appliedFilters.vehicle}
