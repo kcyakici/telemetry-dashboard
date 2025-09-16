@@ -41,7 +41,7 @@ This project is containerized with **Docker Compose** for easy setup.
 ### Clone the repository and run the application
 
 ```bash
-git clone https://github.com/yourusername/telemetry-dashboard.git
+git clone https://github.com/kcyakici/telemetry-dashboard.git
 cd telemetry-dashboard
 docker compose up --build
 ```
