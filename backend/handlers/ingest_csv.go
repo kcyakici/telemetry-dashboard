@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -20,6 +21,10 @@ import (
 func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 	ct := c.ContentType()
 	if ct != "multipart/form-data" {
+		slog.Warn("invalid content type",
+			"got", ct,
+			"expected", "multipart/form-data",
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid content type, must be multipart/form-data, instead got " + ct})
 		return
 	}
@@ -29,12 +34,14 @@ func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
+		slog.Error("file upload failed", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "file upload failed: " + err.Error()})
 		return
 	}
 	defer file.Close()
 
 	if !strings.HasSuffix(strings.ToLower(header.Filename), ".csv") {
+		slog.Warn("invalid file extension", "filename", header.Filename)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file extension, must be .csv"})
 		return
 	}
@@ -43,12 +50,17 @@ func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 	// Example: B183_2019-06-24_03-16-13_2019-06-24_18-54-06.csv
 	parts := strings.Split(header.Filename, "_")
 	vehicleID := parts[0]
+	slog.Info("starting CSV ingest",
+		"filename", header.Filename,
+		"vehicle_id", vehicleID,
+	)
 
 	reader := csv.NewReader(file)
 	reader.FieldsPerRecord = len(csvHeaderToDb)
 
 	headerRow, err := reader.Read()
 	if err != nil {
+		slog.Error("failed to read CSV header row", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read header row"})
 		return
 	}
@@ -58,6 +70,10 @@ func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 	for i, csvCol := range headerRow {
 		dbCol, ok := csvHeaderToDb[csvCol]
 		if !ok {
+			slog.Warn("unexpected CSV column",
+				"index", i,
+				"column", csvCol,
+			)
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": fmt.Sprintf("unexpected column %d: got '%s'", i, csvCol),
 			})
@@ -68,12 +84,14 @@ func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 
 	// Collect rows
 	var rows [][]interface{}
+	lineCount := 0
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
+			slog.Error("invalid CSV row", "line", lineCount+2, "error", err) // +2: header + 1-indexed
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid csv row: " + err.Error()})
 			return
 		}
@@ -81,12 +99,14 @@ func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 		// Convert CSV strings → Go types
 		row, convErr := parseCSVRecord(record)
 		if convErr != nil {
+			slog.Warn("parse error in row", "line", lineCount+2, "error", convErr)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "parse error: " + convErr.Error()})
 			return
 		}
 
 		fullRow := append([]interface{}{vehicleID}, row...)
 		rows = append(rows, fullRow)
+		lineCount++
 	}
 
 	cols := append([]string{"vehicle_id"}, mappedCols...)
@@ -96,6 +116,7 @@ func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
+		slog.Error("failed to begin DB transaction", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db begin: " + err.Error()})
 		return
 	}
@@ -103,15 +124,22 @@ func IngestCSV(c *gin.Context, pool *pgxpool.Pool) {
 
 	_, err = tx.CopyFrom(ctx, pgx.Identifier{"telemetry"}, cols, pgx.CopyFromRows(rows))
 	if err != nil {
+		slog.Error("bulk insert failed", "error", err, "rows", len(rows))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "copy from failed: " + err.Error()})
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
+		slog.Error("transaction commit failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "commit failed: " + err.Error()})
 		return
 	}
 
+	slog.Info("CSV ingest completed",
+		"vehicle_id", vehicleID,
+		"rows_inserted", len(rows),
+		"filename", header.Filename,
+	)
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "inserted": len(rows), "vehicle_id": vehicleID})
 }
 

@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"log/slog"
+	"os"
 
 	"telemetry-dashboard/db"
 	"telemetry-dashboard/handlers"
@@ -25,6 +27,16 @@ func main() {
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
+
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+
+	// Replace the default logger
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
+	slog.Info("logger initialized", "level", "INFO", "format", "JSON")
 
 	router.POST("/ingest_csv", func(c *gin.Context) { handlers.IngestCSV(c, conn) })
 	router.GET("/kpis", func(c *gin.Context) { handlers.GetKPIs(c, conn) })

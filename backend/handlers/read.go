@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -12,10 +13,11 @@ import (
 )
 
 var allowedMetrics = map[string]string{
-	"speed":    "odometry_vehicle_speed",
-	"temp":     "temperature_ambient",
-	"power":    "electric_power_demand",
-	"traction": "traction_traction_force", // TODO add break pressure
+	"speed":          "odometry_vehicle_speed",
+	"temp":           "temperature_ambient",
+	"power":          "electric_power_demand",
+	"traction_force": "traction_traction_force",
+	"brake_pressure": "traction_brake_pressure",
 	// add others you want to expose
 }
 
@@ -24,7 +26,11 @@ func GetKPIs(c *gin.Context, pool *pgxpool.Pool) {
 	start := c.Query("start")
 	end := c.Query("end")
 
+	slog.Info("handling KPI request",
+		"vehicle", vehicle, "start", start, "end", end)
+
 	if err := validateBaseParams(vehicle, start, end); err != nil {
+		slog.Warn("invalid KPI request params", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
@@ -48,10 +54,13 @@ func GetKPIs(c *gin.Context, pool *pgxpool.Pool) {
 	var avgSpeed, maxTemp, totalPower, avgBrakePressure, doorOpenRatio *float64
 	if err := pool.QueryRow(ctx, query, vehicle, start, end).
 		Scan(&avgSpeed, &maxTemp, &totalPower, &avgBrakePressure, &doorOpenRatio); err != nil {
+		slog.Error("KPI query failed while scanning rows", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed: " + err.Error()})
 		return
 	}
 
+	slog.Info("successfully retrieved KPIs",
+		"vehicle", vehicle, "avg_speed", avgSpeed, "max_temp", maxTemp, "total_power", totalPower, "avg_brake_pressure", avgBrakePressure, "door_open_ratio", doorOpenRatio)
 	c.JSON(http.StatusOK, gin.H{
 		"avg_speed":          avgSpeed,
 		"max_temp":           maxTemp,
@@ -68,18 +77,24 @@ func GetTrend(c *gin.Context, pool *pgxpool.Pool) {
 	start := c.Query("start")
 	end := c.Query("end")
 
+	slog.Info("handling trend request",
+		"metric", metric, "vehicle", vehicle, "start", start, "end", end)
+
 	if err := validateBaseAndMetric(metric, vehicle, start, end); err != nil {
+		slog.Warn("invalid trend params", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	queryStr := buildTrendQuery(metric, start, end)
-	// log.Println("Constructed query for trend: " + queryStr) // TODO delete
+	slog.Debug("constructed trend query", "sql", queryStr)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	rows, err := pool.Query(ctx, queryStr, vehicle, start, end)
 	if err != nil {
+		slog.Error("trend query failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed: " + err.Error()})
 		return
 	}
@@ -94,6 +109,7 @@ func GetTrend(c *gin.Context, pool *pgxpool.Pool) {
 		var ts time.Time
 		var v *float64
 		if err := rows.Scan(&ts, &v); err != nil {
+			slog.Error("row scan failed inside trend", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "scan failed: " + err.Error()})
 			return
 		}
@@ -102,6 +118,7 @@ func GetTrend(c *gin.Context, pool *pgxpool.Pool) {
 		}
 	}
 
+	slog.Info("trend query returned rows", "metric", metric, "count", len(result))
 	c.JSON(http.StatusOK, result)
 }
 
@@ -112,7 +129,11 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 	from := c.Query("from")
 	to := c.Query("to")
 
+	slog.Info("handling distribution request",
+		"metric", metric, "vehicle", vehicle, "from", from, "to", to)
+
 	if err := validateBaseAndMetric(metric, vehicle, from, to); err != nil {
+		slog.Warn("invalid distribution params", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
@@ -120,6 +141,8 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 	binsStr := c.DefaultQuery("bins", "10")
 	bins, err := strconv.Atoi(binsStr)
 	if err != nil || bins <= 0 {
+		slog.Warn("invalid bins param, falling back to default",
+			"binsStr", binsStr, "error", err, "fallback", 10)
 		bins = 10
 	}
 
@@ -139,11 +162,14 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 
 	var min, max *float64
 	if err := pool.QueryRow(ctx, minMaxQuery, vehicle, from, to).Scan(&min, &max); err != nil {
+		slog.Error("min max query failed for distribution", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "min/max query failed: " + err.Error()})
 		return
 	}
 
 	if min == nil || max == nil || *min == *max {
+		slog.Info("distribution query returned no range",
+			"metric", metric, "vehicle", vehicle)
 		c.JSON(http.StatusOK, DistributionResponse{
 			Metric:  metric,
 			Vehicle: vehicle,
@@ -181,6 +207,7 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 
 	rows, err := pool.Query(ctx, q, vehicle, from, to)
 	if err != nil {
+		slog.Error("bucket query failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "bucket query failed: " + err.Error()})
 		return
 	}
@@ -193,6 +220,7 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 		var b Bucket
 		var minVal, maxVal float64
 		if err := rows.Scan(&b.Bucket, &b.Count, &minVal, &maxVal); err != nil {
+			slog.Error("row scan failed inside distribution", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "scan failed: " + err.Error()})
 			return
 		}
@@ -202,6 +230,8 @@ func GetDistribution(c *gin.Context, pool *pgxpool.Pool) {
 		out = append(out, b)
 	}
 
+	slog.Info("distribution computed successfully",
+		"metric", metric, "vehicle", vehicle, "bins", bins, "bucket_count", len(out))
 	c.JSON(http.StatusOK, DistributionResponse{
 		Metric:  metric,
 		Vehicle: vehicle,

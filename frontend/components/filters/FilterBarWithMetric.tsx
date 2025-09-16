@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import FilterBarBase from "./FilterBarBase";
+import { metricsConfig } from "@/config/metrics"; // <-- import config
 
 export type Filters = {
   vehicle: string;
@@ -36,10 +37,11 @@ export default function FilterBarWithMetric({
           onChange={(e) => setMetric(e.target.value)}
           className="border rounded p-2 bg-gray-700 text-white"
         >
-          <option value="speed">Speed</option>
-          <option value="temp">Temperature</option>
-          <option value="power">Power Demand</option>
-          <option value="traction">Traction Force</option>
+          {metricsConfig.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
         </select>
       </div>
     </div>
