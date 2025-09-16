@@ -37,7 +37,19 @@ export default function KpisPage() {
 
   // initial load
   useEffect(() => {
-    loadKpis(initialFilters);
+    const fetchData = async (filters: FiltersBase) => {
+      const url = new URL("http://localhost:8080/kpis");
+      url.searchParams.append("vehicle_id", filters.vehicle);
+      url.searchParams.append("start", filters.from);
+      url.searchParams.append("end", filters.to);
+
+      const res = await fetch(url.toString());
+      const json = await res.json();
+      setAppliedFilters(filters);
+      setKpis(json);
+    };
+
+    fetchData(initialFilters);
   }, []);
 
   const hasData =

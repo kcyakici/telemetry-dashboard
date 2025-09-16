@@ -12,17 +12,10 @@ import {
 
 type BarChartProps = {
   data: { range: string; count: number }[];
-  metric: string;
-  vehicle: string;
   header: string;
 };
 
-export default function BarChartComponent({
-  data,
-  metric,
-  vehicle,
-  header,
-}: BarChartProps) {
+export default function BarChartComponent({ data, header }: BarChartProps) {
   return (
     <div className="bg-gray-800 p-6 rounded-xl shadow">
       <h2 className="text-lg mb-4">{header}</h2>

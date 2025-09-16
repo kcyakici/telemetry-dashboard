@@ -109,8 +109,6 @@ export default function DistributionPage() {
             appliedFilters.from
           } TO ${appliedFilters.to} - Bins: ${appliedBin}`}
           data={chartData}
-          metric={appliedFilters.metric}
-          vehicle={appliedFilters.vehicle}
         />
       ) : (
         <p className="text-gray-400">No distribution data available.</p>
