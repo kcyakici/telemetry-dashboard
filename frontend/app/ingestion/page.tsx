@@ -28,7 +28,7 @@ export default function IngestionPage() {
       setUploading(true);
       setMessage(null);
 
-      const res = await fetch("http://localhost:8080/ingest_csv", {
+      const res = await fetch("http://localhost:8080/ingest-csv", {
         method: "POST",
         body: formData,
       });

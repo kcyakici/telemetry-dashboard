@@ -13,10 +13,15 @@ import { TrendPoint } from "../../types";
 
 type TrendChartProps = {
   data: TrendPoint[];
+  isAnimationActive: boolean;
   header: string;
 };
 
-export default function TrendChart({ data, header }: TrendChartProps) {
+export default function TrendChart({
+  data,
+  isAnimationActive,
+  header,
+}: TrendChartProps) {
   const chartData = data.map((d) => ({
     time: new Date(d.timestamp).toLocaleTimeString(),
     value: d.value,
@@ -50,6 +55,7 @@ export default function TrendChart({ data, header }: TrendChartProps) {
             stroke="#38bdf8"
             strokeWidth={2}
             dot={false}
+            isAnimationActive={isAnimationActive}
           />
         </LineChart>
       </ResponsiveContainer>

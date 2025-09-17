@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import NavbarLink from "./NavbarLink";
 
 export default function Navbar() {
   return (
@@ -9,24 +9,12 @@ export default function Navbar() {
         <div className="text-xl font-bold">Telemetry Dashboard</div>
 
         <div className="flex space-x-6">
-          <Link href="/" className="hover:text-blue-400 transition">
-            Home
-          </Link>
-          <Link href="/ingestion" className="hover:text-blue-400 transition">
-            Upload
-          </Link>
-          <Link href="/trends" className="hover:text-blue-400 transition">
-            Trends
-          </Link>
-          <Link
-            href="/distributions"
-            className="hover:text-blue-400 transition"
-          >
-            Distribution
-          </Link>
-          <Link href="/kpis" className="hover:text-blue-400 transition">
-            KPIs
-          </Link>
+          <NavbarLink href="/" text="Home"></NavbarLink>
+          <NavbarLink href="/ingestion" text="Upload"></NavbarLink>
+          <NavbarLink href="/livetrend" text="Live"></NavbarLink>
+          <NavbarLink href="/trends" text="Trends"></NavbarLink>
+          <NavbarLink href="/distributions" text="Distribution"></NavbarLink>
+          <NavbarLink href="/kpis" text="KPIs"></NavbarLink>
         </div>
       </div>
     </nav>
