@@ -14,6 +14,9 @@ import (
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true }, // TODO restrict to frontend URL
+	// Add buffer sizes to prevent blocking
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
 }
 
 type TelemetryEvent struct {
@@ -38,6 +41,7 @@ func sendWSError(conn *websocket.Conn, msg string) {
 func LiveTrend(c *gin.Context, pool *pgxpool.Pool) {
 	vehicle := c.Query("vehicle_id")
 	metric := c.DefaultQuery("metric", "speed")
+	// TODO validate metric before upgrading to WebSocket
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -55,7 +59,7 @@ func LiveTrend(c *gin.Context, pool *pgxpool.Pool) {
 	conn.SetReadLimit(512)
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	conn.SetPongHandler(func(appData string) error {
-		slog.Info("pong received", "data", appData)
+		slog.Debug("pong received", "data", appData)
 		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		return nil
 	})
@@ -65,6 +69,13 @@ func LiveTrend(c *gin.Context, pool *pgxpool.Pool) {
 
 	// Ping goroutine
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("ping goroutine panic", "error", r)
+				cancel()
+			}
+		}()
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -72,22 +83,34 @@ func LiveTrend(c *gin.Context, pool *pgxpool.Pool) {
 			case <-ticker.C:
 				conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-					slog.Info("ping failed", "metric", metric, "error", err)
+					slog.Debug("ping failed", "metric", metric, "error", err)
 					cancel()
 					return
 				}
-				slog.Info("ping sent", "metric", metric)
+				slog.Debug("ping sent", "metric", metric)
 			}
 		}
 	}()
 
 	// Reader goroutine (detect disconnects, enable pong handler)
 	go func() {
-		for {
-			if _, _, err := conn.ReadMessage(); err != nil {
-				slog.Info("client disconnected", "error", err)
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("reader goroutine panic", "error", r)
 				cancel()
+			}
+		}()
+
+		for {
+			select {
+			case <-ctx.Done():
 				return
+			default:
+				if _, _, err := conn.ReadMessage(); err != nil {
+					slog.Debug("client disconnected", "error", err)
+					cancel()
+					return
+				}
 			}
 		}
 	}()
@@ -108,6 +131,18 @@ func LiveTrend(c *gin.Context, pool *pgxpool.Pool) {
 		return
 	}
 
+	// Send connection success message
+	successMsg := map[string]interface{}{
+		"type":    "connected",
+		"vehicle": vehicle,
+		"metric":  metric,
+	}
+	conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	if err := conn.WriteJSON(successMsg); err != nil {
+		slog.Error("failed to send connection success", "error", err)
+		return
+	}
+
 	// Main loop: forward DB notifications → client
 	for {
 		select {
@@ -118,7 +153,7 @@ func LiveTrend(c *gin.Context, pool *pgxpool.Pool) {
 			notify, err := db.Conn().WaitForNotification(ctx)
 			if err != nil {
 				if ctx.Err() != nil {
-					slog.Info("db listener stopped", "reason", ctx.Err())
+					slog.Debug("db listener stopped", "reason", ctx.Err())
 					return
 				}
 				slog.Error("wait notify failed", "error", err)
@@ -129,8 +164,7 @@ func LiveTrend(c *gin.Context, pool *pgxpool.Pool) {
 			var ev TelemetryEvent
 			if err := json.Unmarshal([]byte(notify.Payload), &ev); err != nil {
 				slog.Warn("unmarshal notify failed", "payload", notify.Payload, "error", err)
-				sendWSError(conn, "invalid telemetry data received")
-				continue
+				continue // Don't send error to client for malformed data
 			}
 
 			// Filter by vehicle
@@ -151,10 +185,6 @@ func LiveTrend(c *gin.Context, pool *pgxpool.Pool) {
 				value = ev.Traction
 			case "brake":
 				value = ev.Brake
-			default:
-				slog.Warn("unsupported metric", "metric", metric)
-				sendWSError(conn, "unsupported metric: "+metric)
-				continue
 			}
 
 			if value == nil {
@@ -169,7 +199,7 @@ func LiveTrend(c *gin.Context, pool *pgxpool.Pool) {
 
 			conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 			if err := conn.WriteJSON(point); err != nil {
-				slog.Info("client write failed, closing connection", "error", err)
+				slog.Debug("client write failed, closing connection", "error", err)
 				return
 			}
 		}

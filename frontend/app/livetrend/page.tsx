@@ -9,7 +9,7 @@ export default function LiveTrendPage() {
   const [vehicle, setVehicle] = useState("B183");
   const [metric, setMetric] = useState(metricsConfig[0].value);
 
-  const { points, error } = useLiveTrend(vehicle, metric);
+  const { points, error, isConnected } = useLiveTrend(vehicle, metric);
 
   return (
     <div className="p-6 space-y-6 text-white bg-gray-900 min-h-screen">
@@ -57,7 +57,11 @@ export default function LiveTrendPage() {
           isAnimationActive={false}
         />
       ) : (
-        <p className="text-gray-400">Waiting for live telemetry...</p>
+        <p className="text-gray-400">
+          {isConnected
+            ? "Waiting for live telemetry..."
+            : "Connecting to server..."}
+        </p>
       )}
     </div>
   );

@@ -29,7 +29,7 @@ func main() {
 	}))
 
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: slog.LevelDebug,
 	})
 
 	// Replace the default logger
