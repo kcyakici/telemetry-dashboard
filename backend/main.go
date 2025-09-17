@@ -39,7 +39,7 @@ func main() {
 	slog.Info("logger initialized", "level", "INFO", "format", "JSON")
 
 	router.POST("/ingest-csv", func(c *gin.Context) { handlers.IngestCSV(c, conn) })
-	router.POST("/live-trend", func(c *gin.Context) { handlers.LiveTrend(c, conn) })
+	router.GET("/live-trend", func(c *gin.Context) { handlers.LiveTrend(c, conn) })
 	router.GET("/kpis", func(c *gin.Context) { handlers.GetKPIs(c, conn) })
 	router.GET("/trend", func(c *gin.Context) { handlers.GetTrend(c, conn) })
 	router.GET("/distribution", func(c *gin.Context) { handlers.GetDistribution(c, conn) })

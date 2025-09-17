@@ -1,8 +1,8 @@
 "use client";
 
-import KpiChart, { KpiProps } from "@/components/charts/KpiChart";
-import { useEffect, useState } from "react";
+import KpiChart from "@/components/charts/KpiChart";
 import FilterBarBase, { FiltersBase } from "@/components/filters/FilterBarBase";
+import { useEffect, useState } from "react";
 
 const initialFilters = {
   vehicle: "B183",
