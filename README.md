@@ -8,6 +8,7 @@ It was designed to showcase:
 - Trend visualization of telemetry metrics
 - KPI dashboards (aggregates like speed, temperature, power demand, etc.)
 - Distribution charts with dynamic binning
+- Real-time trends as telemetry is ingested
 - Performance optimizations with TimescaleDB features like **continuous aggregates**
 
 ---
@@ -58,7 +59,22 @@ This will start:
 
 - Backend (Go + Gin API) on http://localhost:8080
 - Frontend (Next.js) on http://localhost:3000
-- TimescaleDB (Postgres extension for time-series data)
+- TimescaleDB (Postgres extension for time-series data) on port 5432
+
+### Making sure all containers are running
+
+- Containers may depend on each other and wouldn't fire in case their dependency container is not running yet.
+- You can see the running containers with:
+
+```bash
+docker compose ps
+```
+
+- If a container fails to start because of a dependency, you can run without needing to build again:
+
+```bash
+docker compose --profile all up
+```
 
 ### Stop the application
 
@@ -69,6 +85,7 @@ docker compose --profile all down -v
 ## Dataset
 
 - This project is done using [ZTBus: A Large Dataset of Time-Resolved City Bus Driving Missions](https://www.research-collection.ethz.ch/entities/researchdata/61ac2f6e-2ca9-4229-8242-aed3b0c0d47c). You can download dataset samples and use the "Upload" section in the web application to upload CSV files.
+- Currently, vehicle names are parsed using the name of the CSV file since vehicle_id's are not available in the files.
 
 ## ⚠️ Important Notes on TimescaleDB Aggregations
 
