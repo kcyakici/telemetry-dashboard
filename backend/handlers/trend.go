@@ -73,6 +73,7 @@ func buildTrendQuery(metric string, filters *QueryFilters) string {
 	if duration > 1*time.Hour {
 		// Use aggregated tables for better performance
 		if table, exists := aggregatedTables[metric]; exists {
+			slog.Debug("long time interval selected, querying aggregated table", "interval", duration)
 			aggCol := aggregatedColumns[metric]
 			baseQuery = fmt.Sprintf(`SELECT bucket AS time_iso, %s AS value FROM %s`, aggCol, table)
 			timeCol = "bucket"
@@ -90,8 +91,8 @@ func buildTrendQuery(metric string, filters *QueryFilters) string {
 	query := fmt.Sprintf(`
 		%s
 		WHERE vehicle_id = $1
-		  AND ($2::timestamptz IS NULL OR %s >= $2::timestamptz)
-		  AND ($3::timestamptz IS NULL OR %s <= $3::timestamptz)
+		  AND %s >= $2::timestamptz
+		  AND %s <= $3::timestamptz
 		ORDER BY %s
 	`, baseQuery, timeCol, timeCol, timeCol)
 

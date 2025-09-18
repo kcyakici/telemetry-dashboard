@@ -41,8 +41,8 @@ export default function DistributionPage() {
     const url = new URL("http://localhost:8080/distribution");
     url.searchParams.append("vehicle_id", filters.vehicle);
     url.searchParams.append("metric", filters.metric);
-    url.searchParams.append("from", filters.from);
-    url.searchParams.append("to", filters.to);
+    url.searchParams.append("start", filters.from);
+    url.searchParams.append("end", filters.to);
     url.searchParams.append("bins", String(appliedBin));
 
     const res = await fetch(url.toString());
@@ -57,8 +57,8 @@ export default function DistributionPage() {
       const url = new URL("http://localhost:8080/distribution");
       url.searchParams.append("vehicle_id", filters.vehicle);
       url.searchParams.append("metric", filters.metric);
-      url.searchParams.append("from", filters.from);
-      url.searchParams.append("to", filters.to);
+      url.searchParams.append("start", filters.from);
+      url.searchParams.append("end", filters.to);
       url.searchParams.append("bins", String(10));
 
       const res = await fetch(url.toString());
