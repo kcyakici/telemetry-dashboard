@@ -29,7 +29,7 @@ func main() {
 	}))
 
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: slog.LevelDebug,
 	})
 
 	// Replace the default logger
@@ -38,7 +38,8 @@ func main() {
 
 	slog.Info("logger initialized", "level", "INFO", "format", "JSON")
 
-	router.POST("/ingest_csv", func(c *gin.Context) { handlers.IngestCSV(c, conn) })
+	router.POST("/ingest-csv", func(c *gin.Context) { handlers.IngestCSV(c, conn) })
+	router.GET("/live-trend", func(c *gin.Context) { handlers.LiveTrend(c, conn) })
 	router.GET("/kpis", func(c *gin.Context) { handlers.GetKPIs(c, conn) })
 	router.GET("/trend", func(c *gin.Context) { handlers.GetTrend(c, conn) })
 	router.GET("/distribution", func(c *gin.Context) { handlers.GetDistribution(c, conn) })

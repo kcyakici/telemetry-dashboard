@@ -61,6 +61,7 @@ export default function TrendsPage() {
       {data?.length > 0 ? (
         <TrendChart
           data={data}
+          isAnimationActive={true}
           header={`${appliedFilters.vehicle} ${appliedFilters.metric} Trend - From ${appliedFilters.from} To ${appliedFilters.to}`}
         />
       ) : (

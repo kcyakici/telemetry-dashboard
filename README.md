@@ -24,6 +24,9 @@ It was designed to showcase:
 - **KPI Dashboard**  
   Highlights average speed, maximum temperature, power totals, brake pressure, and door usage ratios.
 
+- **Live Trends**
+  Observe real-time data as new telemetry data are ingested.
+
 - **TimescaleDB Continuous Aggregates**  
   Efficient queries on large telemetry datasets via pre-aggregated materialized views.
 
@@ -38,18 +41,17 @@ This project is containerized with **Docker Compose** for easy setup.
 - [Docker](https://docs.docker.com/get-docker/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 
-### Clone the repository and run the application
+### Clone the repository
 
 ```bash
 git clone https://github.com/kcyakici/telemetry-dashboard.git
 cd telemetry-dashboard
-docker compose up --build
 ```
 
 ### Run the application
 
 ```bash
-docker compose up --build
+docker compose --profile all up --build
 ```
 
 This will start:
@@ -61,7 +63,7 @@ This will start:
 ### Stop the application
 
 ```bash
-docker compose down -v
+docker compose --profile all down -v
 ```
 
 ## Dataset
@@ -81,8 +83,6 @@ If aggregates haven’t been refreshed yet, certain queries (trend charts for la
 ---
 
 ## 🌟 Future Improvements
-
-- Real-time WebSocket streaming for telemetry updates
 
 - More KPIs and customizable dashboards
 

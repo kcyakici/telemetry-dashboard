@@ -92,3 +92,31 @@ SELECT add_continuous_aggregate_policy('trend_power_1min',
     -- start_offset => INTERVAL '1 hour',
     end_offset   => INTERVAL '1 minute',
     schedule_interval => INTERVAL '1 minute');
+
+-- NOTIFY
+-- 1. Create a notification function
+CREATE OR REPLACE FUNCTION notify_telemetry()
+RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM pg_notify(
+    'telemetry_channel',
+    json_build_object(
+      'vehicle_id', NEW.vehicle_id,
+      'time_iso',   NEW.time_iso,
+      'speed',      NEW.odometry_vehicle_speed,
+      'temp',       NEW.temperature_ambient,
+      'power',      NEW.electric_power_demand,
+      'traction',   NEW.traction_traction_force,
+      'brake',      NEW.traction_brake_pressure
+    )::text
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2. Attach trigger to telemetry table
+DROP TRIGGER IF EXISTS telemetry_notify ON telemetry;
+CREATE TRIGGER telemetry_notify
+AFTER INSERT ON telemetry
+FOR EACH ROW EXECUTE FUNCTION notify_telemetry();
+
