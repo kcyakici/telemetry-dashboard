@@ -49,11 +49,19 @@ func GetKPIs(c *gin.Context, pool *pgxpool.Pool) {
 
 	slog.Info("successfully retrieved KPIs",
 		"vehicle", filters.VehicleID, "avg_speed", avgSpeed, "max_temp", maxTemp, "total_power", totalPower, "avg_brake_pressure", avgBrakePressure, "door_open_ratio", doorOpenRatio)
-	c.JSON(http.StatusOK, gin.H{
-		"avg_speed":          avgSpeed,
-		"max_temp":           maxTemp,
-		"total_power":        totalPower,
-		"avg_brake_pressure": avgBrakePressure,
-		"door_open_ratio":    doorOpenRatio,
+	c.JSON(http.StatusOK, KpiResponse{
+		Avg_speed:          avgSpeed,
+		Max_temp:           maxTemp,
+		Total_power:        totalPower,
+		Avg_brake_pressure: avgBrakePressure,
+		Door_open_ratio:    doorOpenRatio,
 	})
+}
+
+type KpiResponse struct {
+	Avg_speed          *float64 `json:"avg_speed"`
+	Max_temp           *float64 `json:"max_temp"`
+	Total_power        *float64 `json:"total_power"`
+	Avg_brake_pressure *float64 `json:"avg_brake_pressure"`
+	Door_open_ratio    *float64 `json:"door_open_ratio"`
 }

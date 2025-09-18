@@ -5,30 +5,13 @@ import DistributionChart from "../../components/charts/DistributionChart";
 import FilterBarWithMetric, {
   Filters,
 } from "../../components/filters/FilterBarWithMetric";
+import { metricsConfig } from "@/config/metrics";
 
 const initialFilters: Filters = {
   vehicle: "B183",
-  metric: "temp",
+  metric: metricsConfig[0].value,
   from: "2019-06-24T03:16:00Z",
   to: "2019-06-24T03:20:00Z",
-};
-
-type Bucket = {
-  bucket: number;
-  count: number;
-  range_min: number;
-  range_max: number;
-};
-
-type DistributionResponse = {
-  metric: string;
-  vehicle: string;
-  bins: number;
-  min: number;
-  max: number;
-  from?: string;
-  to?: string;
-  buckets: Bucket[];
 };
 
 export default function DistributionPage() {
@@ -116,3 +99,21 @@ export default function DistributionPage() {
     </div>
   );
 }
+
+type Bucket = {
+  bucket: number;
+  count: number;
+  range_min: number;
+  range_max: number;
+};
+
+type DistributionResponse = {
+  metric: string;
+  vehicle: string;
+  bins: number;
+  min: number;
+  max: number;
+  from?: string;
+  to?: string;
+  buckets: Bucket[];
+};
