@@ -6,10 +6,11 @@ import TrendChart from "../../components/charts/TrendChart";
 import FilterBarWithMetric, {
   Filters,
 } from "../../components/filters/FilterBarWithMetric";
+import { metricsConfig } from "@/config/metrics";
 
 const initialFilters: Filters = {
   vehicle: "B183",
-  metric: "temp",
+  metric: metricsConfig[0].value,
   from: "2019-06-24T03:16:00Z",
   to: "2019-06-24T03:20:00Z",
 };
