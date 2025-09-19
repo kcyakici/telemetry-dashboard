@@ -1,3 +1,5 @@
+import DatabaseStatus from "@/components/status/DatabaseStatus";
+
 export default function HomePage() {
   return (
     <div className="max-w-4xl mx-auto text-center space-y-8">
@@ -6,6 +8,8 @@ export default function HomePage() {
         This project provides a simple way to ingest, store, and visualize
         vehicle telemetry data using TimescaleDB, Go, Nextjs and Recharts.
       </p>
+
+      <DatabaseStatus />
 
       <div className="grid md:grid-cols-3 gap-6 mt-8">
         <div className="bg-gray-800 p-6 rounded-xl shadow">
