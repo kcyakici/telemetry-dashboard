@@ -38,7 +38,7 @@ export default function DatabaseStatus() {
       <div className="bg-blue-800 p-4 rounded-xl text-white">
         You have <strong>0 rows</strong> in the database.
         <br />
-        Start by uploading aZTBus dataset sample to use the dashboard!
+        Start by uploading a ZTBus dataset sample to use the dashboard!
       </div>
     );
   }

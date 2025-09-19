@@ -22,6 +22,6 @@ func GetStats(c *gin.Context, pool *pgxpool.Pool) {
 		return
 	}
 
-	slog.Info("stats retrieved stats", "rows", count)
+	slog.Info("successfully retrieved stats", "rows", count)
 	c.JSON(http.StatusOK, gin.H{"row_count": count})
 }
